@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Báo cáo Tuần — VNPT eKYC</title>
+<!-- Google Fonts: Inter -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#14202e; --muted:#4a5866; --faint:#8c98a6;
+    --bg:#f0f2f5; --card:#fff; --line:#e2e8f0;
+    --navy:#1b3a5c; --navy-d:#102236; --brand:#1f5d97;
+    --teal:#0e7c6b; --teal-l:#e6f4f0; --teal-b:#b3ded4;
+    --blue:#2563a8; --blue-l:#eaf1fa; --blue-b:#c4d8ef;
+    --amb:#b45309;  --amb-l:#fdf3e7;  --amb-b:#f0d5b2;
+    --red:#b42318;  --red-l:#fdeceb;  --red-b:#f3c6c1;
+    --purple:#6d28d9; --purple-l:#f5f3ff; --purple-b:#ddd6fe;
+    --gray-l:#f8fafc;
+    --shadow-sm:0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md:0 4px 8px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.05);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);font-size:13.5px;line-height:1.55;
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button, input, select, textarea{
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 0 80px}
+  
+  /* Top notice bar */
+  .top-bar{background:var(--navy-d);color:#e2e8f0;padding:6px 20px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+  .top-bar span.badge-org{background:rgba(255,255,255,0.15);padding:2px 8px;border-radius:4px;font-weight:600}
+
+  /* Edit Mode Notification Banner */
+  #edit-mode-banner{
+    display:none;background:#2563eb;color:#fff;padding:8px 20px;font-size:12.5px;text-align:center;
+    font-weight:600;position:sticky;top:0;z-index:9998;box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  }
+  body.edt-on #edit-mode-banner{display:block}
+
+  /* Header */
+  header{background:linear-gradient(135deg, var(--navy) 0%, #154674 100%);color:#fff;padding:24px 32px 20px;border-bottom:4px solid var(--teal);box-shadow:var(--shadow-md)}
+  header .row{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px}
+  header h1{margin:0 0 6px;font-size:23px;font-weight:800;letter-spacing:-.3px}
+  header .sub{font-size:13px;color:#cbd5e1;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  header .sub span{display:inline-flex;align-items:center;gap:4px}
+  header .status{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+
+  main{padding:0 24px}
+  section{margin-top:26px}
+  
+  .sec-header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--teal);padding-bottom:7px;margin-bottom:14px;
+  }
+  h2{font-size:15.5px;font-weight:800;color:var(--navy);margin:0;display:flex;align-items:center;gap:8px}
+  .sec-tagline{font-size:11.5px;color:var(--muted);font-weight:500}
+
+  h3{font-size:13px;font-weight:800;color:var(--navy);margin:14px 0 6px}
+  p{margin:0 0 8px}
+  
+  /* Tables */
+  .tbl-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;box-shadow:var(--shadow-sm);background:#fff;border:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--navy);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+  tr:nth-child(even) td{background:var(--gray-l)}
+  tr:hover td{background:#f1f5f9}
+  .col-center{text-align:center}
+  .col-right{text-align:right}
+
+  /* Status Pills */
+  .pill{
+    display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;
+    padding:3px 9px;border-radius:20px;white-space:nowrap;cursor:default;user-select:none;
+    transition:transform 0.1s, opacity 0.1s;
+  }
+  .pill.teal{background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-b)}
+  .pill.blue{background:var(--blue-l);color:var(--brand);border:1px solid var(--blue-b)}
+  .pill.amb{background:var(--amb-l);color:var(--amb);border:1px solid var(--amb-b)}
+  .pill.red{background:var(--red-l);color:var(--red);border:1px solid var(--red-b)}
+  .pill.purple{background:var(--purple-l);color:var(--purple);border:1px solid var(--purple-b)}
+  .pill.lg{font-size:12.5px;padding:5px 12px}
+  
+  body.edt-on .pill{cursor:pointer;position:relative}
+  body.edt-on .pill:hover{transform:scale(1.04);filter:brightness(0.95)}
+  body.edt-on .pill::after{content:" 🎨";font-size:9px;opacity:0.7;margin-left:3px}
+
+  .blist{margin:4px 0 0;padding-left:16px;font-size:12.5px}
+  .blist li{margin-bottom:5px;line-height:1.5}
+  
+  /* ============================================================ */
+  /* BỐ CỤC THẺ CHỈ SỐ THÔNG MINH (SMART DYNAMIC METRIC GRID) */
+  /* Tự động dàn trang và căn chỉnh tỷ lệ cân đối theo số lượng ô */
+  /* ============================================================ */
+  .metric-grid{
+    display:grid;
+    gap:10px;
+    width:100%;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  }
+  /* Căn chỉnh bố cục chuẩn xác theo data-count */
+  .metric-grid[data-count="1"]{grid-template-columns:1fr}
+  .metric-grid[data-count="2"]{grid-template-columns:repeat(2, 1fr)}
+  .metric-grid[data-count="3"]{grid-template-columns:repeat(3, 1fr)}
+  .metric-grid[data-count="4"]{grid-template-columns:repeat(4, 1fr)}
+  .metric-grid[data-count="5"]{grid-template-columns:repeat(5, 1fr)}
+  .metric-grid[data-count="6"]{grid-template-columns:repeat(3, 1fr)}
+  .metric-grid[data-count="7"]{grid-template-columns:repeat(4, 1fr)}
+  .metric-grid[data-count="8"]{grid-template-columns:repeat(4, 1fr)}
+
+  .metric-card{
+    background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+    box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:space-between;
+  }
+  .metric-card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--brand);
+  }
+  .metric-card.teal::before{background:var(--teal)}
+  .metric-card.blue::before{background:var(--blue)}
+  .metric-card.amb::before{background:var(--amb)}
+  .metric-card.red::before{background:var(--red)}
+  .metric-card.purple::before{background:var(--purple)}
+  
+  .metric-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:flex;justify-content:space-between;align-items:center}
+  .metric-value{font-size:22px;font-weight:800;color:var(--navy);margin:4px 0 1px;line-height:1.15;letter-spacing:-.2px}
+  .metric-sub{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .metric-tag{font-size:10px;color:var(--faint);margin-top:3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .trend-up{color:var(--teal);font-weight:700}
+  .trend-down{color:var(--red);font-weight:700}
+  .trend-good-down{color:var(--teal);font-weight:700}
+  .trend-neutral{color:var(--muted);font-weight:600}
+
+  /* Mục Điểm nổi bật trong tuần */
+  .highlights-container{
+    background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 18px;
+    box-shadow:var(--shadow-sm);margin-top:14px;
+  }
+  .highlights-title{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .highlight-item{
+    padding:8px 10px;border-left:3px solid var(--teal);background:var(--gray-l);border-radius:0 6px 6px 0;
+    margin-bottom:8px;position:relative;font-size:12.5px;line-height:1.5;
+  }
+  .highlight-item.contract{border-left-color:var(--brand);background:#f0f6fc}
+  .highlight-item.incident{border-left-color:var(--red);background:#fff5f5}
+  .highlight-item.milestone{border-left-color:var(--teal);background:#f0fdf4}
+  .highlight-item:last-child{margin-bottom:0}
+
+  /* KR Cards (Section 5) */
+  .kr-summary-bar{
+    display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;margin-bottom:12px;
+  }
+  .kr-stat-pill{
+    background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    text-align:center;box-shadow:var(--shadow-sm);
+  }
+  .kr-stat-pill b{display:block;font-size:19px;font-weight:800;color:var(--navy);letter-spacing:-.2px}
+  .kr-stat-pill span{font-size:11px;color:var(--muted)}
+  .kr-stat-pill.teal b{color:var(--teal)}
+  .kr-stat-pill.amb b{color:var(--amb)}
+  .kr-stat-pill.red b{color:var(--red)}
+
+  .kr-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow-sm)}
+  .kr-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+  .kr-name{font-weight:700;color:var(--navy);font-size:13px}
+  .kr-code{font-size:11px;color:var(--brand);font-weight:700;background:var(--blue-l);padding:1px 6px;border-radius:4px}
+  .kr-bar-track{background:#e2e8f0;border-radius:20px;height:10px;overflow:hidden;position:relative}
+  .kr-bar-fill{height:100%;border-radius:20px;transition:width .4s}
+  .kr-bar-fill.teal{background:var(--teal)}
+  .kr-bar-fill.amb{background:var(--amb)}
+  .kr-bar-fill.red{background:var(--red)}
+  .kr-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+
+  /* Callout Alerts (Blockers & Escalations) */
+  .alert-box{border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid transparent}
+  .alert-box.risk{background:var(--red-l);border-color:var(--red-b)}
+  .alert-box.risk b{color:var(--red)}
+  .alert-box.warn{background:var(--amb-l);border-color:var(--amb-b)}
+  .alert-box.warn b{color:var(--amb)}
+  .alert-box.info{background:var(--blue-l);border-color:var(--blue-b)}
+  .alert-box.info b{color:var(--brand)}
+  .alert-action{margin-top:6px;font-size:12px;color:var(--ink);font-weight:600;padding-top:6px;border-top:1px dashed rgba(0,0,0,0.12)}
+  .alert-action span{color:var(--navy);background:#fff;padding:2px 6px;border-radius:4px;border:1px solid var(--line)}
+
+  footer{text-align:center;color:var(--faint);font-size:11.5px;padding:20px 0 0;border-top:1px solid var(--line);margin-top:24px}
+
+  /* Table & Card Add / Delete row controls */
+  .tbl-actions{display:none;margin-top:8px;gap:8px}
+  body.edt-on .tbl-actions{display:flex}
+  .btn-tbl{padding:5px 12px;font-size:11.5px;font-weight:600;background:#fff;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--brand)}
+  .btn-tbl:hover{background:var(--blue-l);border-color:var(--brand)}
+  
+  .row-del-btn{display:none;color:var(--red);cursor:pointer;font-weight:bold;padding:0 5px;margin-right:4px}
+  body.edt-on .row-del-btn{display:inline-block}
+
+  .card-del-btn{
+    display:none;position:absolute;top:5px;right:6px;color:var(--red);cursor:pointer;
+    font-weight:bold;font-size:12px;background:rgba(255,255,255,0.9);border-radius:50%;
+    width:18px;height:18px;text-align:center;line-height:16px;border:1px solid var(--line);
+  }
+  body.edt-on .card-del-btn{display:inline-block}
+
+  /* Inline editing styling for ALL editable text */
+  body.edt-on [contenteditable="true"]{
+    outline:1px dashed #3b82f6;
+    outline-offset:2px;
+    border-radius:3px;
+    background:rgba(59,130,246,0.035);
+    transition:background .15s, outline-color .15s;
+    cursor:text;
+  }
+  body.edt-on [contenteditable="true"]:hover{
+    outline-color:var(--brand);
+    background:rgba(59,130,246,0.08);
+  }
+  body.edt-on [contenteditable="true"]:focus{
+    outline:2px solid var(--brand);
+    background:#fff;
+    box-shadow:0 0 0 3px rgba(31,93,151,0.15);
+  }
+
+  /* Floating Editor Toolbar */
+  #edtbar{
+    position:fixed;right:18px;bottom:18px;z-index:9999;display:flex;gap:8px;
+    background:rgba(255,255,255,0.96);padding:8px 14px;border-radius:40px;
+    box-shadow:0 6px 22px rgba(0,0,0,0.2);border:1px solid var(--line);
+    backdrop-filter:blur(8px);
+  }
+  #edtbar button{
+    padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:#fff;
+    color:var(--ink);cursor:pointer;font-weight:600;font-size:12px;
+    display:inline-flex;align-items:center;gap:5px;transition:all .15s;
+  }
+  #edtbar button:hover{background:#f1f5f9;transform:translateY(-1px)}
+  #edtbtn{background:var(--navy);color:#fff;border-color:var(--navy)}
+  #edtbtn:hover{background:var(--navy-d);color:#fff}
+  #edtsave{background:var(--teal);border-color:var(--teal);color:#fff}
+  #edtsave:hover{background:#0b6355;color:#fff}
+  #edtcopy{background:#f8fafc;color:var(--brand);border-color:var(--blue-b)}
+
+  /* Print optimization */
+  @media print{
+    #edtbar, #edit-mode-banner, .top-bar, .tbl-actions, .row-del-btn, .card-del-btn{display:none !important}
+    body{background:#fff;color:#000;font-size:11.5px}
+    .wrap{max-width:100%;margin:0;padding:0}
+    header{background:var(--navy) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .metric-card, .kr-card, .tbl-scroll, table{box-shadow:none !important;border:1px solid #cbd5e1}
+  }
+
+  /* Responsive for mobile & tablets */
+  @media (max-width: 960px){
+    .metric-grid[data-count="5"],
+    .metric-grid[data-count="6"],
+    .metric-grid[data-count="7"],
+    .metric-grid[data-count="8"]{grid-template-columns:repeat(3, 1fr) !important}
+  }
+  @media (max-width: 680px){
+    header{padding:18px 14px}
+    header h1{font-size:18px}
+    header .row{flex-direction:column}
+    header .status{align-items:flex-start}
+    main{padding:0 12px}
+    .metric-grid,
+    .metric-grid[data-count]{grid-template-columns:repeat(2, 1fr) !important}
+    .kr-summary-bar{grid-template-columns:repeat(2, 1fr)}
+    #edtbar{right:8px;bottom:8px;flex-direction:column;border-radius:14px;padding:6px}
+  }
+  @media (max-width: 420px){
+    .metric-grid,
+    .metric-grid[data-count]{grid-template-columns:1fr !important}
+  }
+</style>
+</head>
+<body class="">
+
+<div id="edit-mode-banner">
+  ✏️ CHẾ ĐỘ SỬA TOÀN BỘ VĂN BẢN ĐANG BẬT: Bạn có thể click và chỉnh sửa BẤT KỲ chữ nào trên trang (tiêu đề, tên chỉ số, bảng biểu, số liệu, ghi chú). Nhấp đúp vào nhãn trạng thái để đổi màu.
+</div>
+
+<div class="top-bar">
+  <div contenteditable="false"><span contenteditable="false"><b>VNPT AI</b></span></div>
+  <div contenteditable="false">Kỳ báo cáo tuần: Định kỳ Thứ Sáu hàng tuần</div>
+</div>
+
+<div class="wrap">

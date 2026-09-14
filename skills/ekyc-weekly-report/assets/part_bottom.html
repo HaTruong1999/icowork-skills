@@ -1,0 +1,343 @@
+<footer contenteditable="false">
+  Báo cáo tiến độ tuần — VNPT eKYC. Định dạng chuẩn quản trị sản phẩm B2B. Hỗ trợ chỉnh sửa toàn bộ nội dung và xuất file HTML/PDF trực tiếp.
+</footer>
+</div>
+
+<!-- ============================================================ -->
+<!-- THANH CÔNG CỤ CHỈNH SỬA TOÀN DIỆN (FULL-TEXT EDITOR TOOLBAR) -->
+<!-- ============================================================ -->
+<div id="edtbar">
+  <button id="edtbtn">✏️ Bật sửa toàn bộ chữ</button>
+  <button id="edtsave" style="display: none;">💾 Tải file tuần mới (.html)</button>
+  <button id="edtcopy">📋 Copy bản tóm tắt</button>
+  <button id="edtprint">🖨️ In / Xuất PDF</button>
+  <button id="edtcancel" style="display: none;">Huỷ bỏ</button>
+</div>
+
+<script>
+(function(){
+  var body = document.body;
+  var btnEdit = document.getElementById('edtbtn');
+  var btnSave = document.getElementById('edtsave');
+  var btnCancel = document.getElementById('edtcancel');
+  var btnCopy = document.getElementById('edtcopy');
+  var btnPrint = document.getElementById('edtprint');
+  var btnAddActivity = document.getElementById('btn-add-activity');
+  var btnAddRisk = document.getElementById('btn-add-risk');
+  var btnAddPlan = document.getElementById('btn-add-plan');
+  var btnAddHighlight = document.getElementById('btn-add-highlight');
+  var btnAddMetricCard = document.getElementById('btn-add-metric-card');
+  
+  var isEditing = false;
+  var originalSnapshot = null;
+
+  var pillColors = ["teal", "blue", "amb", "red", "purple"];
+  var cardColorThemes = ["blue", "teal", "purple", "amb", "red"];
+
+  // Cập nhật thuộc tính data-count cho grid thẻ chỉ số để tự động căn chỉnh tỷ lệ
+  function updateMetricGridCount() {
+    var container = document.getElementById('metric-cards-container');
+    if (!container) return;
+    var count = container.querySelectorAll('.metric-card').length;
+    container.setAttribute('data-count', count);
+  }
+  updateMetricGridCount();
+
+  var textSelectors = [
+    'header h1', 'header .sub', 'header .sub span', 'header .val-txt',
+    '.top-bar div', '.top-bar span',
+    'h2', 'h3', '.sec-tagline',
+    '.metric-title', '.metric-value', '.metric-sub', '.metric-tag',
+    '.highlights-title', '.highlight-item',
+    'table th', 'table td',
+    'ul.blist li', 'p',
+    '.alert-box b', '.alert-box li', '.alert-action', '.alert-action span',
+    '.kr-name', '.kr-code', '.kr-meta span', '.kr-stat-pill b', '.kr-stat-pill span',
+    '.pill',
+    'footer'
+  ].join(', ');
+
+  function getAllTextElements() {
+    return document.querySelectorAll(textSelectors);
+  }
+
+  function setEditing(enable) {
+    isEditing = enable;
+    body.classList.toggle('edt-on', enable);
+
+    var elements = getAllTextElements();
+    elements.forEach(function(el) {
+      if (el.closest('#edtbar')) return;
+      el.contentEditable = enable ? "true" : "false";
+    });
+
+    btnEdit.innerHTML = enable ? "👁️ Tắt chế độ sửa" : "✏️ Bật sửa toàn bộ chữ";
+    btnSave.style.display = enable ? "inline-flex" : "none";
+    btnCancel.style.display = enable ? "inline-flex" : "none";
+
+    updateRowDeleteButtons();
+    updateCardDeleteButtons();
+  }
+
+  // Click vào bất kỳ chữ nào cũng gõ được
+  document.addEventListener('click', function(e) {
+    if (!isEditing) return;
+    var target = e.target;
+    if (target.closest('#edtbar') || target.closest('.tbl-actions') || target.classList.contains('row-del-btn') || target.classList.contains('card-del-btn')) return;
+    
+    if (target.contentEditable !== "true" && target.tagName !== "BODY" && target.tagName !== "HTML") {
+      target.contentEditable = "true";
+      target.focus();
+    }
+  });
+
+  // Nhấp đúp vào Pill đổi màu xoay vòng
+  document.addEventListener('dblclick', function(e) {
+    var pill = e.target.closest('.pill');
+    if (!pill || !isEditing) return;
+
+    var currentCls = pill.classList.contains('teal') ? 'teal' :
+                     pill.classList.contains('blue') ? 'blue' :
+                     pill.classList.contains('amb') ? 'amb' :
+                     pill.classList.contains('red') ? 'red' : 'purple';
+
+    var currentIdx = pillColors.indexOf(currentCls);
+    var nextCls = pillColors[(currentIdx + 1) % pillColors.length];
+
+    pill.classList.remove('teal', 'blue', 'amb', 'red', 'purple');
+    pill.classList.add(nextCls);
+  });
+
+  // Gắn nút xoá dòng
+  function updateRowDeleteButtons() {
+    var rows = document.querySelectorAll('#tbl-activities tbody tr, #risk-container .alert-box, #list-next-week li, #highlights-list .highlight-item');
+    rows.forEach(function(r) {
+      if (!r.querySelector('.row-del-btn')) {
+        var delBtn = document.createElement('span');
+        delBtn.className = 'row-del-btn';
+        delBtn.innerHTML = '✕';
+        delBtn.title = 'Xoá mục này';
+        delBtn.onclick = function(e) {
+          e.stopPropagation();
+          if (confirm('Xoá mục này khỏi báo cáo?')) {
+            r.remove();
+          }
+        };
+        r.insertBefore(delBtn, r.firstChild);
+      }
+    });
+  }
+
+  // Gắn nút xoá cho từng thẻ KPI
+  function updateCardDeleteButtons() {
+    var cards = document.querySelectorAll('#metric-cards-container .metric-card');
+    cards.forEach(function(c) {
+      if (!c.querySelector('.card-del-btn')) {
+        var delBtn = document.createElement('span');
+        delBtn.className = 'card-del-btn';
+        delBtn.innerHTML = '✕';
+        delBtn.title = 'Xoá ô chỉ số này';
+        delBtn.onclick = function(e) {
+          e.stopPropagation();
+          if (confirm('Xoá ô chỉ số này khỏi báo cáo?')) {
+            c.remove();
+            updateMetricGridCount();
+          }
+        };
+        c.appendChild(delBtn);
+      }
+    });
+  }
+
+  // Thêm ô chỉ số mới (cho phép tùy biến số lượng ô theo sản phẩm)
+  if (btnAddMetricCard) {
+    btnAddMetricCard.addEventListener('click', function() {
+      var container = document.getElementById('metric-cards-container');
+      var currentCount = container.querySelectorAll('.metric-card').length;
+      var theme = cardColorThemes[currentCount % cardColorThemes.length];
+      
+      var card = document.createElement('div');
+      card.className = 'metric-card ' + theme;
+      card.innerHTML = '<div class="metric-title" contenteditable="true">TÊN CHỈ SỐ MỚI <span>📊</span></div>' +
+                       '<div class="metric-value" contenteditable="true">0</div>' +
+                       '<div class="metric-sub" contenteditable="true"><span class="trend-up">▲ 0%</span> vs tuần trước</div>' +
+                       '<span class="metric-tag" contenteditable="true">Ghi chú tóm tắt chỉ số</span>';
+      container.appendChild(card);
+      updateMetricGridCount();
+      updateCardDeleteButtons();
+    });
+  }
+
+  // Thêm điểm nổi bật
+  if (btnAddHighlight) {
+    btnAddHighlight.addEventListener('click', function() {
+      var list = document.getElementById('highlights-list');
+      var div = document.createElement('div');
+      div.className = 'highlight-item milestone';
+      div.contentEditable = "true";
+      div.innerHTML = '📌 <b>Tiêu đề điểm nổi bật:</b> Nội dung sự kiện, số lượng hợp đồng, sự cố phát sinh ngày nào, ảnh hưởng khách hàng nào và hiện trạng xử lý...';
+      list.appendChild(div);
+      updateRowDeleteButtons();
+    });
+  }
+
+  // Thêm dòng công việc mới
+  if (btnAddActivity) {
+    btnAddActivity.addEventListener('click', function() {
+      var tbody = document.querySelector('#tbl-activities tbody');
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td contenteditable="true"><b>Công việc mới</b><div style="font-size:11px;color:var(--muted);margin-top:2px">Mô tả tóm tắt</div></td>' +
+                     '<td><span class="pill blue" contenteditable="true" title="Click để sửa chữ. Nhấp đúp để đổi màu">Đang triển khai</span></td>' +
+                     '<td contenteditable="true"><ul class="blist"><li>Nội dung chi tiết đã thực hiện trong tuần...</li></ul></td>';
+      tbody.appendChild(tr);
+      updateRowDeleteButtons();
+    });
+  }
+
+  // Thêm vấn đề rủi ro mới
+  if (btnAddRisk) {
+    btnAddRisk.addEventListener('click', function() {
+      var container = document.getElementById('risk-container');
+      var div = document.createElement('div');
+      div.className = 'alert-box warn';
+      div.innerHTML = '<b contenteditable="true">🟡 Tiêu đề rủi ro / vướng mắc mới...</b>' +
+                      '<ul class="blist"><li contenteditable="true"><b>Hiện trạng:</b> Chi tiết khó khăn hoặc rủi ro...</li></ul>' +
+                      '<div class="alert-action" contenteditable="true">👉 <b>Đề xuất Sếp chỉ đạo:</b> Ghi rõ đơn vị và nội dung cần hỗ trợ...</div>';
+      container.appendChild(div);
+      updateRowDeleteButtons();
+    });
+  }
+
+  // Thêm kế hoạch tuần tới
+  if (btnAddPlan) {
+    btnAddPlan.addEventListener('click', function() {
+      var list = document.getElementById('list-next-week');
+      var li = document.createElement('li');
+      li.contentEditable = "true";
+      li.innerHTML = '<b>Hạng mục mới:</b> Nội dung cam kết hoàn thành trong tuần tới...';
+      list.appendChild(li);
+      updateRowDeleteButtons();
+    });
+  }
+
+  // Bắt đầu sửa
+  btnEdit.addEventListener('click', function() {
+    if (!isEditing) {
+      originalSnapshot = document.querySelector('main').innerHTML;
+      setEditing(true);
+    } else {
+      setEditing(false);
+    }
+  });
+
+  // Huỷ sửa
+  btnCancel.addEventListener('click', function() {
+    if (confirm('Bạn có chắc muốn huỷ các chỉnh sửa chưa lưu?')) {
+      if (originalSnapshot) {
+        document.querySelector('main').innerHTML = originalSnapshot;
+        updateMetricGridCount();
+      }
+      setEditing(false);
+    }
+  });
+
+  // In / PDF
+  btnPrint.addEventListener('click', function() {
+    if (isEditing) setEditing(false);
+    window.print();
+  });
+
+  // Copy bản tóm tắt (Trích xuất ĐỘNG từ DOM hiện tại)
+  btnCopy.addEventListener('click', function() {
+    var title = document.querySelector('header h1').innerText.trim();
+    var sub = document.querySelector('header .sub').innerText.replace(/\s+/g,' ').trim();
+    var status = document.getElementById('overall-status').innerText.replace('🎨','').trim();
+    
+    // Đọc động các thẻ KPI (bao nhiêu thẻ cũng trích xuất chuẩn)
+    var cards = document.querySelectorAll('#metric-cards-container .metric-card');
+    var kpiTexts = [];
+    cards.forEach(function(c) {
+      var t = c.querySelector('.metric-title') ? c.querySelector('.metric-title').innerText.replace(/[📊📁🏢🛡️🎯⚡]/g,'').trim() : '';
+      var v = c.querySelector('.metric-value') ? c.querySelector('.metric-value').innerText.trim() : '';
+      var s = c.querySelector('.metric-sub') ? c.querySelector('.metric-sub').innerText.trim() : '';
+      if (t && v) kpiTexts.push("• " + t + ": " + v + " (" + s + ")");
+    });
+
+    var text = "📊 " + title.toUpperCase() + "\n" +
+               "📅 " + sub + "\n" +
+               "🚦 Đánh giá chung: " + status + "\n\n" +
+               "⚡ 1. CHỈ SỐ VẬN HÀNH TUẦN (WEEK-ON-WEEK):\n" +
+               kpiTexts.join("\n") + "\n\n";
+
+    // Điểm nổi bật
+    var highlights = document.querySelectorAll('#highlights-list .highlight-item');
+    if (highlights.length > 0) {
+      text += "📌 ĐIỂM NỔI BẬT TRONG TUẦN:\n";
+      highlights.forEach(function(h) {
+        var hText = h.innerText.replace(/^✕\s*/, '').replace(/\n+/g, ' ').trim();
+        text += "• " + hText + "\n";
+      });
+      text += "\n";
+    }
+
+    // Hoạt động trọng tâm
+    text += "🚀 2. TIẾN ĐỘ HOẠT ĐỘNG TRỌNG TÂM:\n";
+    var actRows = document.querySelectorAll('#tbl-activities tbody tr');
+    actRows.forEach(function(r) {
+      var name = r.querySelector('td:nth-child(1) b') ? r.querySelector('td:nth-child(1) b').innerText.trim() : '';
+      var detail = r.querySelector('td:nth-child(3)') ? r.querySelector('td:nth-child(3)').innerText.replace(/\n+/g, ' ').trim() : '';
+      if (name) {
+        text += "• " + name + ": " + detail.substring(0, 120) + (detail.length > 120 ? "..." : "") + "\n";
+      }
+    });
+
+    // Đề xuất hỗ trợ
+    var riskBoxes = document.querySelectorAll('#risk-container .alert-box');
+    if (riskBoxes.length > 0) {
+      text += "\n⚠️ 3. ĐỀ XUẤT CẦN SẾP HỖ TRỢ:\n";
+      riskBoxes.forEach(function(b) {
+        var action = b.querySelector('.alert-action') ? b.querySelector('.alert-action').innerText.replace(/\n+/g, ' ').trim() : '';
+        if (action) text += "• " + action + "\n";
+      });
+    }
+
+    text += "\n🔗 Chi tiết xem file HTML báo cáo đính kèm.";
+
+    navigator.clipboard.writeText(text).then(function() {
+      alert("✅ Đã sao chép bản tóm tắt báo cáo vào bộ nhớ tạm!\nBạn có thể dán (Ctrl+V) vào Zalo / Slack / Email gửi ngay cho Sếp.");
+    }).catch(function() {
+      prompt("Sao chép nội dung tóm tắt dưới đây:", text);
+    });
+  });
+
+  // Lưu file HTML mới
+  btnSave.addEventListener('click', function() {
+    setEditing(false);
+
+    var bar = document.getElementById('edtbar');
+    bar.style.display = 'none';
+    
+    document.querySelectorAll('.row-del-btn, .card-del-btn').forEach(function(el) { el.remove(); });
+
+    var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    bar.style.display = 'flex';
+
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var d = new Date(), pad = function(n){ return String(n).padStart(2,'0'); };
+    var stamp = d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
+    
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'Bao_cao_tuan_VNPT_eKYC_' + stamp + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  });
+
+})();
+</script>
+
+
+</body></html>

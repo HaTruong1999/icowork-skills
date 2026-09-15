@@ -1,0 +1,634 @@
+<!--
+  KHUNG TEMPLATE — vnptai-report-html
+  =====================================
+  Đây là bộ khung HTML gốc (CSS + JS giữ nguyên 100%) kèm các khối nội dung
+  mẫu (cover, mục lục, section, subsection, key-points, mini-list, bảng
+  thường, bảng nguồn lực rộng, ảnh đơn, nhiều ảnh, footer...).
+
+  CÁCH DÙNG: copy toàn bộ file này làm điểm xuất phát, rồi:
+    1. Thay <title> và phần .cover (eyebrow / h1 / subtitle / badge).
+    2. Xây <nav class="sidebar"> mục lục khớp 1:1 với các <section>/<div class="doc-subsection">
+       thực tế bên dưới (xem quy tắc đặt id trong SKILL.md).
+    3. Nhân bản khối <section class="doc-section">...</section> mẫu cho từng
+       phần I, II, III... và khối <div class="doc-subsection">...</div> cho
+       từng mục con — xoá phần nào không dùng.
+    4. Xoá toàn bộ chú thích hướng dẫn (chuỗi bắt đầu bằng "HƯỚNG DẪN:") sau
+       khi đã điền xong nội dung thật.
+  KHÔNG chỉnh sửa phần trong <style> và <script> trừ khi người dùng yêu cầu
+  đổi màu / bố cục.
+-->
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__TIÊU_ĐỀ_TÀI_LIỆU__</title>
+<style>
+  :root{
+    --navy:#0b2545;
+    --navy-2:#13355e;
+    --accent:#0e7c86;
+    --text:#1c2733;
+    --muted:#5b6b7a;
+    --bg:#f5f7f9;
+    --panel:#ffffff;
+    --border:#dfe4e9;
+    --nav-w:300px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:auto;}
+  body{
+    margin:0;
+    font-family:"Segoe UI",Arial,Helvetica,sans-serif;
+    color:var(--text);
+    background:var(--bg);
+    line-height:1.55;
+    font-size:15.5px;
+  }
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  /* ---------- Layout ---------- */
+  .app{
+    display:flex;
+    min-height:100vh;
+  }
+  nav.sidebar{
+    width:var(--nav-w);
+    flex:0 0 var(--nav-w);
+    background:var(--navy);
+    color:#dbe6f1;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+    padding:22px 0 40px 0;
+    border-right:1px solid #06182e;
+  }
+  nav.sidebar .brand{
+    padding:0 20px 16px 20px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    margin-bottom:10px;
+  }
+  nav.sidebar .brand .tag{
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#7fa8c9;
+    margin-bottom:4px;
+  }
+  nav.sidebar .brand .name{
+    font-size:16px;
+    font-weight:700;
+    color:#fff;
+    line-height:1.3;
+  }
+  nav.sidebar ul{
+    list-style:none;
+    margin:0;
+    padding:0 0 0 0;
+  }
+  nav.sidebar > ul{padding:6px 10px;}
+  nav.sidebar li.nav-section{margin-top:4px;}
+  nav.sidebar li.nav-section > a{
+    display:block;
+    padding:9px 12px;
+    border-radius:6px;
+    font-weight:600;
+    font-size:13.5px;
+    color:#eaf2fa;
+  }
+  nav.sidebar li.nav-section > a:hover{background:rgba(255,255,255,.08);text-decoration:none;}
+  nav.sidebar li.nav-section > a.active{background:var(--accent);color:#fff;}
+  nav.sidebar ul.nav-sub{
+    list-style:none;
+    margin:2px 0 6px 0;
+    padding:0 0 0 14px;
+    border-left:1px solid rgba(255,255,255,.15);
+  }
+  nav.sidebar ul.nav-sub li a{
+    display:block;
+    padding:6px 12px;
+    font-size:12.8px;
+    color:#b9cbdc;
+    border-radius:5px;
+  }
+  nav.sidebar ul.nav-sub li a:hover{background:rgba(255,255,255,.08);color:#fff;text-decoration:none;}
+  nav.sidebar ul.nav-sub li a.active{color:#fff;font-weight:600;background:rgba(255,255,255,.10);}
+  nav.sidebar li a.nav-top{
+    display:block;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:600;
+    color:#9fd6d6;
+  }
+
+  main{
+    flex:1 1 auto;
+    min-width:0;
+    padding:0;
+  }
+  .cover{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 60%,#0e4a63 100%);
+    color:#fff;
+    padding:56px 56px 44px 56px;
+  }
+  .cover .eyebrow{
+    font-size:12.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#8fd0d0;
+    margin-bottom:14px;
+    font-weight:600;
+  }
+  .cover h1{
+    font-size:32px;
+    margin:0 0 10px 0;
+    line-height:1.25;
+    font-weight:800;
+  }
+  .cover .subtitle{
+    font-size:17px;
+    color:#dbe9f2;
+    max-width:760px;
+    margin:0 0 14px 0;
+  }
+  .cover .badge{
+    display:inline-block;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.3);
+    color:#eaf7f7;
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:.04em;
+    padding:5px 12px;
+    border-radius:999px;
+  }
+
+  .content-wrap{
+    max-width:980px;
+    margin:0 auto;
+    padding:40px 48px 90px 48px;
+  }
+
+  section.doc-section{
+    padding-top:14px;
+    margin-bottom:8px;
+    border-top:1px solid var(--border);
+  }
+  section.doc-section:first-of-type{border-top:none;}
+  section.doc-section > h1{
+    font-size:22px;
+    color:var(--navy);
+    margin:26px 0 16px 0;
+    padding-bottom:10px;
+    border-bottom:3px solid var(--accent);
+    letter-spacing:.01em;
+  }
+  .doc-subsection{margin:26px 0 34px 0;scroll-margin-top:14px;}
+  .doc-subsection h2{
+    font-size:17.5px;
+    color:var(--navy-2);
+    margin:0 0 12px 0;
+    padding-left:12px;
+    border-left:4px solid var(--accent);
+  }
+  section.doc-section{scroll-margin-top:14px;}
+
+  .section-intro p{margin:0 0 12px 0;}
+  .doc-subsection p{margin:0 0 12px 0;}
+  em{color:var(--muted);font-style:italic;}
+  strong, b{color:var(--text);}
+
+  /* Key-message bullets (the condensed summary text) */
+  .key-points{
+    background:#eef6f6;
+    border-left:4px solid var(--accent);
+    border-radius:0 6px 6px 0;
+    padding:14px 18px;
+    margin:0 0 16px 0;
+  }
+  .key-points p{margin:0 0 10px 0;font-size:14.8px;}
+  .key-points p:last-child{margin-bottom:0;}
+  ul.mini-list{
+    margin:6px 0 10px 0;
+    padding-left:20px;
+  }
+  ul.mini-list li{margin-bottom:5px;font-size:14.3px;}
+  .mini-label{
+    font-weight:700;
+    color:var(--navy-2);
+    font-size:13.5px;
+    margin:14px 0 4px 0;
+  }
+
+  /* Images */
+  img{
+    max-width:100%;
+    height:auto;
+    display:block;
+    margin:14px auto;
+    border:1px solid var(--border);
+    border-radius:4px;
+    background:#fff;
+  }
+  .inline-figure{margin:0;}
+
+  /* Captions inside folds */
+  p:has(> em:only-child){
+    text-align:center;
+    font-size:13px;
+    color:var(--muted);
+    margin-top:-4px;
+    margin-bottom:16px;
+  }
+
+  /* Tables */
+  .table-wrap{
+    overflow-x:auto;
+    margin:0;
+    border:1px solid var(--border);
+    border-radius:6px;
+  }
+  table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:13.3px;
+    background:#fff;
+  }
+  table td, table th{
+    border:1px solid var(--border);
+    padding:9px 11px;
+    vertical-align:top;
+    text-align:left;
+  }
+  table tr:first-child td, table th{
+    background:#eef3f7;
+    font-weight:700;
+    color:var(--navy);
+  }
+  table tr.odd td{background:#fff;}
+  table tr.even td{background:#fafcfd;}
+  table img{max-width:220px;margin:6px auto;}
+  table p{margin:0 0 8px 0;}
+  table p:last-child{margin-bottom:0;}
+
+  table.resource-table{
+    table-layout:fixed;
+    min-width:980px;
+  }
+  table.resource-table col:first-child{width:34%;}
+  table.resource-table td:first-child{font-weight:600;color:var(--text);}
+
+  /* ---- Text-folding (details/summary) for every image / table ---- */
+  details.fold{
+    margin:10px 0 18px 0;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:#fff;
+    overflow:hidden;
+  }
+  details.fold > summary{
+    list-style:none;
+    cursor:pointer;
+    padding:11px 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:#f4f7f9;
+    font-size:13.6px;
+    color:var(--navy-2);
+    user-select:none;
+  }
+  details.fold > summary::-webkit-details-marker{display:none;}
+  details.fold > summary::before{
+    content:"▸";
+    color:var(--accent);
+    font-size:13px;
+    flex:0 0 auto;
+    width:12px;
+  }
+  details.fold[open] > summary::before{content:"▾";}
+  details.fold > summary .fold-icon{flex:0 0 auto;font-size:14px;}
+  details.fold > summary .fold-label{flex:1 1 auto;font-weight:600;}
+  details.fold > summary .fold-hint{
+    flex:0 0 auto;
+    font-size:11.5px;
+    color:var(--muted);
+    font-weight:400;
+  }
+  details.fold[open] > summary{border-bottom:1px solid var(--border);}
+  details.fold > summary:hover{background:#eaf1f1;}
+  details.fold .fold-body{
+    padding:16px;
+  }
+  details.fold .fold-body > *:last-child{margin-bottom:0;}
+
+  footer.doc-footer{
+    max-width:980px;
+    margin:0 auto;
+    padding:24px 48px 60px 48px;
+    color:var(--muted);
+    font-size:12.5px;
+    border-top:1px solid var(--border);
+  }
+
+  /* Expand / collapse all controls */
+  .fold-controls{
+    display:flex;
+    gap:10px;
+    margin:0 0 18px 0;
+  }
+  .fold-controls button{
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--navy-2);
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:7px 13px;
+    cursor:pointer;
+  }
+  .fold-controls button:hover{background:#eef3f7;}
+
+  /* back to top */
+  #backtotop{
+    position:fixed;
+    right:22px;
+    bottom:22px;
+    background:var(--navy);
+    color:#fff;
+    border-radius:50%;
+    width:42px;
+    height:42px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+    opacity:0;
+    pointer-events:none;
+  }
+  #backtotop.show{opacity:1;pointer-events:auto;}
+
+  @media (max-width: 900px){
+    .app{flex-direction:column;}
+    nav.sidebar{
+      position:relative;
+      width:100%;
+      height:auto;
+      max-height:340px;
+    }
+    .cover{padding:34px 22px;}
+    .content-wrap{padding:24px 18px 60px 18px;}
+    footer.doc-footer{padding:20px 18px 40px 18px;}
+  }
+
+  @media print{
+    nav.sidebar, #backtotop, .fold-controls{display:none;}
+    .app{display:block;}
+    details.fold{border:none;}
+    details.fold > summary{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="top"></div>
+<div class="app">
+
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="tag">Mục lục</div>
+      <div class="name">__TÊN_NGẮN_TÀI_LIỆU__</div>
+    </div>
+    <ul>
+<li><a href="#top" class="nav-top">Trang bìa</a></li>
+<!--
+  HƯỚNG DẪN: mỗi <section class="doc-section"> ở dưới ứng với đúng một
+  <li class="nav-section"> ở đây, và mỗi <div class="doc-subsection"> con
+  của nó ứng với đúng một <li><a> trong <ul class="nav-sub"> tương ứng.
+  href phải khớp CHÍNH XÁC id của section/subsection (xem quy tắc tạo id
+  trong SKILL.md, mục "Quy tắc đặt id / neo mục lục").
+-->
+<li class="nav-section"><a href="#i.-slug-phan-i">I. TÊN PHẦN I (VIẾT HOA)</a>
+<ul class="nav-sub">
+<li><a href="#slug-muc-con-1">Tên mục con 1.1</a></li>
+<li><a href="#slug-muc-con-2">Tên mục con 1.2</a></li>
+</ul>
+</li>
+<li class="nav-section"><a href="#ii.-slug-phan-ii">II. TÊN PHẦN II (VIẾT HOA)</a>
+<ul class="nav-sub">
+<li><a href="#slug-muc-con-3">Tên mục con 2.1</a></li>
+</ul>
+</li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="cover">
+      <div class="eyebrow">__ĐƠN_VỊ__ &middot; Tài liệu nội bộ</div>
+      <h1>__TIÊU_ĐỀ_IN_HOA__</h1>
+      <div class="subtitle">__PHỤ_ĐỀ_MÔ_TẢ_NGẮN_1_2_CÂU__</div>
+      <span class="badge">__NHÃN_PHÂN_LOẠI__ &middot; hình &amp; bảng gốc có thể mở rộng khi cần</span>
+    </div>
+
+    <div class="content-wrap">
+      <div class="fold-controls">
+        <button type="button" id="expand-all">Mở tất cả hình / bảng</button>
+        <button type="button" id="collapse-all">Thu gọn tất cả</button>
+      </div>
+
+<!--
+  ============================================================
+  MẪU 1 SECTION CẤP I HOÀN CHỈNH — nhân bản khối <section> này
+  cho từng phần I, II, III... của tài liệu thật, rồi xoá mẫu.
+  ============================================================
+-->
+<section id="i.-slug-phan-i" class="doc-section">
+<h1>I. TÊN PHẦN I (VIẾT HOA)</h1>
+<div class="section-intro">
+<div class="key-points">
+<p>Đoạn tóm tắt 1-2 câu nêu thông điệp cốt lõi của cả phần I, dùng <b>in đậm</b> cho số liệu/ từ khoá quan trọng.</p>
+</div>
+</div>
+
+<!-- Mục con dạng đoạn văn + key-points, KHÔNG có bảng/ảnh -->
+<div id="slug-muc-con-1" class="doc-subsection">
+<h2>Tên mục con 1.1</h2>
+<div class="key-points">
+<p><b>Nhãn nhỏ:</b> nội dung diễn giải, có thể có <b>số liệu nổi bật</b> và <em>ghi chú phụ</em>.</p>
+<p><b>Nhãn nhỏ khác:</b> đoạn diễn giải tiếp theo.</p>
+</div>
+</div>
+
+<!-- Mục con dạng key-points + danh sách rút gọn (mini-list) + bảng chi tiết gấp lại -->
+<div id="slug-muc-con-2" class="doc-subsection">
+<h2>Tên mục con 1.2</h2>
+<div class="key-points">
+<p><b>Câu dẫn nhập, ví dụ nêu tổng số:</b></p>
+<ul class='mini-list'><li>Hạng mục A: <b>1.234</b></li><li>Hạng mục B: <b>567</b></li><li>Hạng mục C: <b>~890</b></li></ul>
+</div>
+
+<!--
+  BẢNG THƯỜNG (2 cột trở lên, vừa khung 980px):
+  - Luôn bọc trong <details class="fold"><summary>...</summary><div class="fold-body">
+    <div class="table-wrap"><table>...</table></div><p><em>Chú thích bảng</em></p></div></details>
+  - <summary> có 3 phần: icon (📊 cho bảng, 📷 cho ảnh), fold-label = tên bảng/hình,
+    fold-hint = "(bấm để xem)" cố định.
+  - Hàng đầu <tbody> là header (không dùng <thead>), chữ <strong>.
+  - Các hàng dữ liệu luân phiên class="odd"/"even" bắt đầu từ "odd".
+  - <colgroup> đặt width % cho từng cột, tổng ~99-100%.
+-->
+<details class="fold"><summary><span class="fold-icon">&#128202;</span><span class="fold-label">Bảng I.2.1: Tên bảng mô tả nội dung</span><span class="fold-hint">(bấm để xem)</span></summary><div class="fold-body"><div class="table-wrap"><table>
+<colgroup>
+<col style="width: 30%"/>
+<col style="width: 70%"/>
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><strong>Cột A</strong></td>
+<td><strong>Cột B</strong></td>
+</tr>
+<tr class="even">
+<td>Giá trị hàng 1</td>
+<td>Mô tả chi tiết hàng 1</td>
+</tr>
+<tr class="odd">
+<td>Giá trị hàng 2</td>
+<td>Mô tả chi tiết hàng 2</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>Bảng I.2.1: Tên bảng mô tả nội dung</em></p></div></details>
+
+<!--
+  BẢNG RỘNG NHIỀU CỘT (vd. bảng nguồn lực man-month theo nhiều vai trò):
+  thêm class="resource-table" để bảng có table-layout:fixed và min-width:980px,
+  tự cuộn ngang trong .table-wrap thay vì bể layout. Cột đầu là nhãn hạng mục
+  (in đậm tự động qua CSS), có thể dùng <tr><td colspan="N"><strong>...</strong></td></tr>
+  làm dòng tiêu đề nhóm, và một dòng TỔNG in đậm ở cuối.
+-->
+<details class="fold"><summary><span class="fold-icon">&#128202;</span><span class="fold-label">Bảng I.2.2: Tên bảng rộng nhiều cột</span><span class="fold-hint">(bấm để xem)</span></summary><div class="fold-body"><div class="table-wrap"><table class="resource-table">
+<colgroup>
+<col style="width: 34%"/>
+<col style="width: 11%"/>
+<col style="width: 11%"/>
+<col style="width: 11%"/>
+<col style="width: 11%"/>
+<col style="width: 11%"/>
+<col style="width: 11%"/>
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><strong>Hạng mục</strong></td>
+<td><strong>Cột 1</strong></td>
+<td><strong>Cột 2</strong></td>
+<td><strong>Cột 3</strong></td>
+<td><strong>Cột 4</strong></td>
+<td><strong>Cột 5</strong></td>
+<td><strong>Cột 6</strong></td>
+</tr>
+<tr class="even">
+<td colspan="7"><strong>A. Nhóm hạng mục</strong></td>
+</tr>
+<tr class="odd">
+<td>Dòng chi tiết</td>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+<td>6</td>
+</tr>
+<tr class="even">
+<td><strong>Tổng</strong></td>
+<td><strong>1</strong></td>
+<td><strong>2</strong></td>
+<td><strong>3</strong></td>
+<td><strong>4</strong></td>
+<td><strong>5</strong></td>
+<td><strong>6</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><em>Bảng I.2.2: Tên bảng rộng nhiều cột</em></p></div></details>
+
+<!--
+  ẢNH ĐƠN: cũng bọc trong details.fold, icon 📷, fold-body chỉ có
+  <p><img .../></p><p><em>Chú thích hình</em></p>. Ảnh nhúng base64
+  (data:image/...;base64,...) hoặc đường dẫn tương đối nếu người dùng
+  cung cấp file ảnh riêng — KHÔNG tự bịa ảnh.
+-->
+<details class="fold"><summary><span class="fold-icon">&#128247;</span><span class="fold-label">Hình I.2.1: Tên hình mô tả nội dung</span><span class="fold-hint">(bấm để xem)</span></summary><div class="fold-body"><p><img loading="lazy" src="__ĐƯỜNG_DẪN_HOẶC_BASE64_ẢNH__" alt="Hình I.2.1"/></p>
+<p><em>Hình I.2.1: Tên hình mô tả nội dung</em></p></div></details>
+
+<!--
+  NHIỀU ẢNH TRONG CÙNG 1 FOLD (khi các ảnh liên quan chặt, đặt cạnh nhau
+  để đỡ chiếm chỗ mục lục): mỗi ảnh kèm caption riêng, fold-label liệt kê
+  tên các hình cách nhau bởi " / " (dùng &nbsp;/&nbsp; trong HTML).
+-->
+<details class="fold"><summary><span class="fold-icon">&#128247;</span><span class="fold-label">Hình I.2.2: Tên hình A &nbsp;/&nbsp; Hình I.2.3: Tên hình B</span><span class="fold-hint">(bấm để xem)</span></summary><div class="fold-body"><p><img loading="lazy" src="__ẢNH_A__" alt="Hình I.2.2"/></p>
+<p><em>Hình I.2.2: Tên hình A</em></p>
+<p><img loading="lazy" src="__ẢNH_B__" alt="Hình I.2.3"/></p>
+<p><em>Hình I.2.3: Tên hình B</em></p></div></details>
+
+</div>
+</section>
+
+<!--
+  ============================================================
+  Nhân bản thêm <section class="doc-section">...</section> ở đây cho
+  các phần II, III, IV... Nhớ cập nhật mục lục ở <nav class="sidebar">
+  và footer bên dưới cho khớp.
+  ============================================================
+-->
+
+    </div>
+
+    <footer class="doc-footer">
+      __GHI_CHÚ_NGUỒN_GỐC_TÀI_LIỆU__ — ví dụ: "Bản tóm tắt được rút gọn từ tài liệu gốc “__TÊN_FILE_GỐC__” - giữ nguyên cấu trúc mục lục, các điểm cốt lõi và toàn bộ hình vẽ/bảng biểu gốc (có thể mở rộng bằng cách bấm vào từng mục)."
+    </footer>
+  </main>
+</div>
+
+<a id="backtotop" href="#top" title="Về đầu trang">&uarr;</a>
+
+<script>
+  // Scrollspy: highlight the nav item for the section currently in view. No animation, just class toggling.
+  (function(){
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('nav.sidebar a[href^="#"]'));
+    var targets = navLinks.map(function(a){
+      var id = a.getAttribute('href').slice(1);
+      return { link: a, el: document.getElementById(id) };
+    }).filter(function(t){ return t.el; });
+
+    function onScroll(){
+      var y = window.scrollY || window.pageYOffset;
+      var current = null;
+      for (var i = 0; i < targets.length; i++){
+        if (targets[i].el.offsetTop - 20 <= y) current = targets[i];
+      }
+      navLinks.forEach(function(a){ a.classList.remove('active'); });
+      if (current) current.link.classList.add('active');
+
+      var backBtn = document.getElementById('backtotop');
+      if (y > 400) backBtn.classList.add('show'); else backBtn.classList.remove('show');
+    }
+    document.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // Expand / collapse all folds
+  (function(){
+    var expandBtn = document.getElementById('expand-all');
+    var collapseBtn = document.getElementById('collapse-all');
+    function setAll(open){
+      document.querySelectorAll('details.fold').forEach(function(d){ d.open = open; });
+    }
+    if (expandBtn) expandBtn.addEventListener('click', function(){ setAll(true); });
+    if (collapseBtn) collapseBtn.addEventListener('click', function(){ setAll(false); });
+  })();
+</script>
+</body>
+</html>

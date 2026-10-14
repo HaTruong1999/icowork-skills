@@ -9,6 +9,7 @@ Biến thể "menu trên" của skill `vnptai-report-html`. Giữ nguyên toàn 
 
 ### Thanh menu ngang hoạt động thế nào
 
+- **Header dạng khối thẻ căn giữa**: thanh menu + trang bìa không tràn hết màn hình mà rộng bằng phần nội dung (`--page-w`, mặc định 980px), chừa lề hai bên (`--page-gutter`) và bo góc, chữ trên bìa thẳng hàng với chữ nội dung. Muốn header/nội dung rộng hơn thì chỉ đổi `--page-w` trong `:root`.
 - **Hàng 1** (`ul.nav-main`): tên tài liệu (bấm để về trang bìa) + "Trang bìa" + một tab cho mỗi phần cấp I. Khi màn hình hẹp, hàng này tự cuộn ngang; dưới 600px ẩn tên tài liệu.
 - **Hàng 2** (`ul.nav-sub` của phần đang đọc): hiện các mục con của phần mà người đọc đang cuộn tới, mục con đang đọc được tô sáng. Hàng này nổi đè lên nội dung nên không làm xô lệch trang khi đổi phần. Trên máy có chuột, rê chuột vào tab phần khác sẽ xem trước mục con của phần đó.
 - Section/subsection đã có `scroll-margin-top` chừa chỗ cho 2 hàng menu, nên bấm vào mục lục sẽ nhảy tới đúng tiêu đề, không bị menu che.

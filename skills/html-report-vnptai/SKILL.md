@@ -1,9 +1,9 @@
 ---
-name: html-report-vnptai
+name: html-report-vnptai-leftnav
 description: Tạo một file HTML báo cáo/tóm tắt độc lập (single-file) theo đúng template chuẩn VNPT AI - trang bìa gradient xanh navy, mục lục (sidebar) cố định bên trái có scrollspy, các section/subsection có khối "key-points" tóm tắt, bảng và hình ảnh được gấp lại trong khối chi tiết dạng "bấm để xem", nút "Mở tất cả / Thu gọn tất cả", nút về đầu trang. Dùng skill này bất cứ khi nào người dùng yêu cầu tạo báo cáo, bản tóm tắt, kế hoạch triển khai, hay tài liệu nội bộ dạng HTML có mục lục và có thể mở/gấp hình-bảng - kể cả khi họ không nói rõ "theo template iCowork" hay không đính kèm file mẫu, miễn là họ nhắc đến việc xuất ra file .html có cấu trúc kiểu tài liệu nội bộ VNPT/VNPT AI.
 ---
 
-# html-report-vnptai
+# html-report-vnptai-leftnav
 
 Skill này giữ lại toàn bộ CSS/JS gốc của template "iCowork" (bản tóm tắt kế hoạch triển khai) và cung cấp một bộ khung (`assets/template.html`) cùng quy tắc điền nội dung, để tạo ra các báo cáo HTML khác có cùng phong cách trình bày mà không cần viết lại CSS/JS từ đầu.
 

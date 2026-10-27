@@ -1,0 +1,177 @@
+{
+  "meta": {
+    "title": "Báo cáo tiến độ triển khai ATBM hệ thống VM",
+    "output_name": "Bao_cao_tien_do_ATBM_VM",
+    "author": "VNPT Net",
+    "date": "24/10/2026",
+    "sources": ["Báo_cáo_tiến_độ_triển_khai_ATBM_hệ_thống_VM_v2.pdf"],
+    "computed": []
+  },
+  "slides": [
+    {
+      "type": "cover",
+      "kicker": "VNPT NET · CHUYÊN ĐỀ 05",
+      "title": "Báo cáo tiến độ triển khai an toàn, bảo mật hệ thống VM",
+      "subtitle": "Hệ thống máy ảo (VM) do VNPT Net quản lý",
+      "date": "Ngày 24/10/2026",
+      "agenda": [
+        {"num": "01", "text": "Danh mục VM"},
+        {"num": "02", "text": "Đổi mật khẩu quản trị"},
+        {"num": "03", "text": "Sao lưu, khôi phục VM"},
+        {"num": "04", "text": "Giải pháp an toàn, bảo mật"},
+        {"num": "05", "text": "Thông điệp, kiến nghị", "gap": true}
+      ]
+    },
+    {
+      "kicker": "01 / 04 · DANH MỤC VM",
+      "title": "Rà soát, chuẩn hóa danh mục VM",
+      "lead": "Hoàn thành rà soát; đã cập nhật, gửi danh mục đối soát cho VNPT-IT trên hệ thống quản lý dự án.",
+      "rows": [
+        {"cols": [1, 1, 1], "blocks": [
+          {"type": "stat", "value": "496", "label": "VM VNPT-IT bàn giao"},
+          {"type": "stat", "value": "450", "label": "VM do VNPT Net quản lý (90,73%)", "tone": "primary"},
+          {"type": "stat", "value": "46", "label": "VM ngoài phạm vi quản lý / đề xuất OFF", "tone": "warn"}
+        ]},
+        {"cols": [1.1, 0.9], "blocks": [
+          {"type": "split", "title": "Phân loại 450 VM theo loại hệ thống",
+           "parts": [
+             {"value": "171", "label": "Viễn thông", "weight": 171, "desc": "**38%** · CPE/ACS, Mentor RAN, NMS, chống spam, USSD, DNS"},
+             {"value": "279", "label": "Công nghệ thông tin", "weight": 279, "desc": "**62%** · OSS/ERP, CSDL (TT CĐS), báo cáo, web, giám sát"}
+           ],
+           "note": "Sơ bộ theo tên VM; 23 VM cần đơn vị chủ quản xác nhận."},
+          {"type": "numlist", "title": "Phân loại 46 VM còn lại", "items": [
+            {"value": "13", "text": "VM thuộc VNPT-IT"},
+            {"value": "02", "text": "VM thuộc VNPT Media"},
+            {"value": "31", "text": "VM không còn nhu cầu, đề xuất tắt (OFF)", "tone": "warn"}
+          ]}
+        ]}
+      ],
+      "next": "Phối hợp VNPT-IT xác nhận danh mục và thực hiện tắt 31 VM sau khi hoàn tất đánh giá ảnh hưởng."
+    },
+    {
+      "kicker": "01 / 04 · DANH MỤC VM · CHI TIẾT",
+      "title": "Phân loại 450 VM: viễn thông và công nghệ thông tin",
+      "rows": [
+        {"cols": [1, 1], "grow": true, "blocks": [
+          {"type": "category", "title": "Hệ thống viễn thông", "sub": "38% · NTL 127 · 30 PHG 44", "total": "171", "tone": "primary",
+           "rows": [
+             {"label": "Quản lý CPE/ACS, DHCP băng rộng", "value": "48"},
+             {"label": "Phân tích vô tuyến RAN (Mentor)", "value": "30"},
+             {"label": "NMS giám sát thiết bị mạng", "value": "28"},
+             {"label": "Chống spam SMS/thoại", "value": "25"},
+             {"label": "DNS dịch vụ, DNS/DHCP Infoblox", "value": "8"},
+             {"label": "Hội nghị truyền hình", "value": "8"},
+             {"label": "Firewall, chống DDoS, RPKI, SD-WAN", "value": "7"},
+             {"label": "USSD Gateway", "value": "6"},
+             {"label": "MMSC, IMS, lưu trữ CDR OCS", "value": "6"},
+             {"label": "PTDL mạng lưới (TTDL), chặn lọc cuộc gọi", "value": "5"}
+           ]},
+          {"type": "category", "title": "Hệ thống công nghệ thông tin", "sub": "62% · NTL 261 · 30 PHG 18", "total": "279", "tone": "dark",
+           "rows": [
+             {"label": "Ứng dụng OSS/ERP, CSDL, nền tảng (TT CĐS)", "value": "200"},
+             {"label": "Báo cáo, phân tích, KPI, web, cổng thông tin", "value": "47"},
+             {"label": "Công cụ giám sát, máy trạm vận hành", "value": "11"},
+             {"label": "Hạ tầng dùng chung: FTP, backup, API", "value": "10"},
+             {"label": "Công cụ hỗ trợ vận hành: Interconnect, PCRF/HLR tools, OMC, SMS tracking", "value": "8"},
+             {"label": "Phát hiện trạm BTS giả", "value": "3"}
+           ]}
+        ]}
+      ],
+      "note": {"label": "Ghi chú", "text": "phân loại sơ bộ theo tên VM và đơn vị chủ quản; 23 VM (KPI, PTML, RPNEW, GSTT, CLM) cần đơn vị xác nhận."}
+    },
+    {
+      "kicker": "02 / 04 · TÀI KHOẢN QUẢN TRỊ",
+      "title": "Triển khai đổi mật khẩu quản trị",
+      "rows": [
+        {"cols": [0.75, 1.25], "grow": true, "blocks": [
+          {"type": "stack", "blocks": [
+            {"type": "stat", "value": "505", "label": "Tài khoản quản trị đã thống kê trên 450 VM"},
+            {"type": "progress", "label": "Tiến độ đổi mật khẩu VM", "value": "33,33%", "percent": 33.33,
+             "caption": "**150/450 VM** đã hoàn thành · còn **300 VM**", "grow": true}
+          ]},
+          {"type": "stack", "blocks": [
+            {"type": "panel", "title": "Kết quả thực hiện", "tone": "light", "bullets": [
+              "Hoàn thành thống kê 505 tài khoản quản trị trên 450 VM.",
+              "Đã đổi mật khẩu quản trị cho 150 VM; tiếp tục triển khai 300 VM còn lại."
+            ]},
+            {"type": "panel", "title": "Khó khăn, rủi ro", "tone": "warn", "grow": true, "bullets": [
+              "Một số hệ thống viễn thông cần thống nhất phương án với đối tác, nhà cung cấp thiết bị trước khi thay đổi.",
+              "Đổi mật khẩu cần thực hiện trong khung giờ thấp điểm, có phương án kiểm tra và khôi phục, tránh ảnh hưởng dịch vụ."
+            ]}
+          ]}
+        ]}
+      ],
+      "next": "Phân nhóm VM theo mức độ rủi ro, thống nhất lịch triển khai và đẩy nhanh tiến độ đổi mật khẩu."
+    },
+    {
+      "kicker": "03 / 04 · SAO LƯU, KHÔI PHỤC",
+      "title": "Triển khai sao lưu, khôi phục VM",
+      "rows": [
+        {"cols": [1], "blocks": [
+          {"type": "status_table", "rows": [
+            {"item": "Backup mức cấu hình", "status": "Hoàn thành",
+             "desc": "Theo quy trình VHKT hiện hành; sao lưu về dung lượng **VNPT-IT cấp cho VNPT Net** và **phân vùng lưu trữ nội bộ** VNPT Net."},
+            {"item": "Snapshot toàn bộ VM – Site 30 PHG", "status": "Hoàn thành",
+             "desc": "Đã phối hợp hoàn thành trên **hệ thống backup VNPT-IT**."},
+            {"item": "Snapshot toàn bộ VM – Site NTL", "status": "Chưa hoàn thành",
+             "desc": "Snapshot trên **hệ thống backup VNPT-IT**; chưa hoàn thành do thiếu dung lượng lưu trữ."},
+            {"item": "Hệ thống viễn thông đặc thù", "status": "Đang đánh giá",
+             "desc": "Đang phối hợp đối tác đánh giá khả năng hỗ trợ snapshot và rủi ro ảnh hưởng dịch vụ."}
+          ]}
+        ]},
+        {"cols": [0.88, 1.12], "grow": true, "blocks": [
+          {"type": "panel", "title": "Vướng mắc trọng tâm", "tone": "danger", "bullets": [
+            "**Sao lưu:** chưa đủ dung lượng lưu trữ phục vụ sao lưu tập trung tại tenant Backup.",
+            "**Khôi phục:** hệ thống viễn thông của VNPT Net có tính đặc thù, việc cài đặt lại cần sự phối hợp của đối tác."
+          ]},
+          {"type": "panel", "title": "Kiến nghị VNPT-IT", "tone": "dark", "bullets": [
+            "**Ưu tiên backup mức snapshot** cho **171 VM** hệ thống viễn thông.",
+            "Cấp đủ **300 TB** dung lượng lưu trữ đã phân bổ cho VNPT Net.",
+            "Hỗ trợ sao lưu tập trung, thay thế lưu trữ phân tán qua OAM.",
+            "VNPT Net đã có văn bản gửi VNPT-IT về nhu cầu dung lượng."
+          ]}
+        ]}
+      ],
+      "note": {"label": "Mục tiêu", "text": "nâng cao an toàn dữ liệu, khả năng quản lý và khôi phục hệ thống khi xảy ra sự cố."}
+    },
+    {
+      "kicker": "04 / 04 · GIẢI PHÁP ATBM",
+      "title": "Triển khai các giải pháp an toàn, bảo mật",
+      "lead": "Tiếp nhận khuyến nghị của VNPT-IT về Hardening, rà soát mã độc và triển khai các biện pháp tăng cường ATBM.",
+      "rows": [
+        {"cols": [1.72, 1], "grow": true, "blocks": [
+          {"type": "status_list", "items": [
+            {"status": "Hoàn thành", "text": "Chuyển đổi, cấu hình DNS Tập đoàn; ngắt card mạng kết nối Internet không cần thiết theo thiết kế."},
+            {"status": "Đang triển khai", "text": "Đổi mật khẩu (**150/450 VM**); kết nối SIEM (**150/450 VM**); rà soát, đóng các cổng dịch vụ không sử dụng theo thiết kế."},
+            {"status": "Đang đánh giá", "text": "Cài đặt EDR/EPP trên các hệ thống viễn thông; đánh giá tính tương thích và nguy cơ ảnh hưởng đến thiết bị, dịch vụ mạng lưới."}
+          ]},
+          {"type": "steps", "title": "Trọng tâm thời gian tới", "items": [
+            "Hoàn thành kết nối SIEM và đổi mật khẩu cho 300 VM còn lại.",
+            "Tiếp tục Hardening, rà soát và đóng các port không cần thiết.",
+            "Phối hợp đối tác đánh giá, thử nghiệm EDR/EPP trước khi triển khai diện rộng."
+          ]}
+        ]}
+      ],
+      "note": {"label": "Nguyên tắc", "text": "bảo đảm an toàn, bảo mật nhưng không làm gián đoạn hoạt động của các hệ thống viễn thông."}
+    },
+    {
+      "dark": true,
+      "kicker": "THÔNG ĐIỆP TỔNG HỢP TRÌNH LÃNH ĐẠO",
+      "title": "Kết quả chính và kiến nghị",
+      "rows": [
+        {"cols": [1, 1, 1, 1], "blocks": [
+          {"type": "stat", "value": "450", "label": "VM đã chuẩn hóa danh mục"},
+          {"type": "stat", "value": "505", "label": "Tài khoản quản trị đã thống kê"},
+          {"type": "stat", "value": "33,33%", "label": "Tiến độ đổi mật khẩu, kết nối SIEM", "tone": "accent"},
+          {"type": "stat", "value": "300 TB", "label": "Dung lượng Backup kiến nghị VNPT-IT cấp đủ", "tone": "highlight"}
+        ]},
+        {"cols": [1, 1], "blocks": [
+          {"type": "text", "title": "Đã đạt được", "tone": "accent",
+           "text": "Hoàn thành chuẩn hóa danh mục 450 VM do VNPT Net quản lý, thống kê 505 tài khoản quản trị và sao lưu cấu hình các hệ thống. Tiến độ đổi mật khẩu và kết nối SIEM đạt 33,33%; đã hoàn thành snapshot tại site 30 PHG, site NTL còn vướng dung lượng lưu trữ."},
+          {"type": "text", "title": "Kiến nghị", "tone": "highlight",
+           "text": "VNPT-IT sớm cấp đủ 300 TB dung lượng Backup, đồng thời phối hợp đánh giá các giải pháp EDR/EPP và snapshot trên hệ thống viễn thông đặc thù để bảo đảm triển khai an toàn, không ảnh hưởng dịch vụ."}
+        ]}
+      ]
+    }
+  ]
+}

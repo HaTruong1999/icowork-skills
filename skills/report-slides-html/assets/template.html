@@ -256,8 +256,8 @@ function bad(s){
 function checkOverflow(){
   var out=[],fit=[];
   document.querySelectorAll('.slide').forEach(function(s,i){
-    var r=bad(s),rows=s.querySelector('.rows');
-    if(r.length&&rows){
+    var r=bad(s),rows=s.querySelector('.rows')||s;   /* cover không có .rows: thu nhỏ trên chính .slide để --fs lan xuống h1/.sub/.ag */
+    if(r.length){
       var steps=[0.96,0.92,0.88,0.85,0.82,0.78];   /* model không tự rút gọn được thì thu nhỏ thêm, tối đa còn 78% */
       for(var k=0;k<steps.length&&r.length;k++){rows.style.setProperty('--fs',steps[k]);r=bad(s)}
       if(!r.length) fit.push({slide:i+1,scale:Math.round(parseFloat(rows.style.getPropertyValue('--fs'))*100)});

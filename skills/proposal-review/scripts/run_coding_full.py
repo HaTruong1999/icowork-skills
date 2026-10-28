@@ -70,7 +70,8 @@ def audit_output(run,src,wd,manifest):
     return result
 
 def tool(run,src,cmd):
-    p=subprocess.run([sys.executable,str(S/'scripts/review.py'),cmd,str(src)]+(['--today',TODAY] if cmd=='prepare' else []),capture_output=True,text=True,timeout=90)
+    env={**os.environ,'IWORK_DRIVER':'1'}
+    p=subprocess.run([sys.executable,str(S/'scripts/review.py'),cmd,str(src)]+(['--today',TODAY] if cmd=='prepare' else []),capture_output=True,text=True,timeout=90,env=env)
     (run/(cmd+'.log')).write_text(p.stdout+'\n'+p.stderr)
     if p.returncode:raise RuntimeError(cmd+': '+p.stderr[-700:]+p.stdout[-700:])
 

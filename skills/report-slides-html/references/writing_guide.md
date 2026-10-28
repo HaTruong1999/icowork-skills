@@ -1,7 +1,11 @@
 # Cách biến tài liệu gốc thành báo cáo slide trình lãnh đạo
 
+> **Bản -k7:** mục 1, 2, 4 (ghi notes.md, dàn slide, văn phong) vẫn dùng được. Mục 3 và 5/5b nói về
+> khối `stat/panel/bars/...` của schema cũ - **không áp dụng**. Chọn mẫu slide và viết đúng cấu trúc
+> theo [huong-dan-k7.md](huong-dan-k7.md) mục 3 (mạch mẫu) và mục 5 (12 mẫu), không theo mục 3/5/5b dưới đây.
+
 Mục tiêu: lãnh đạo xem 1 phút mỗi slide là nắm được **đã làm được gì – còn vướng gì – cần ai làm gì**.
-Mẫu chuẩn: `examples/atbm-vm/` (báo cáo tiến độ ATBM hệ thống VM, 7 slide).
+Mẫu chuẩn (schema cũ, chỉ để tham khảo mạch ý): `examples/atbm-vm/` (báo cáo tiến độ ATBM hệ thống VM, 7 slide).
 
 ## 1. Ghi chú nguồn trước khi viết (notes.md)
 

@@ -36,7 +36,7 @@ BLOCKS = {
     "steps": ({"items"}, {"title", "grow"}),
     "text": ({"text"}, {"title", "tone", "grow"}),
     "table": ({"columns", "rows"}, {"title", "num_cols", "grow"}),
-    "bars": ({"items"}, {"title", "max", "label_width", "grow"}),
+    "bars": ({"items"}, {"title", "label_width", "grow"}),
     "stack": ({"blocks"}, {"grow"}),
 }
 SLIDE_FIELDS = {
@@ -88,6 +88,21 @@ def autofix(rep):
     return fixed
 
 
+def find_unbalanced_bold(obj, path="report"):
+    """Tìm chuỗi có số lần '**' lẻ (mở đậm nhưng quên đóng, hoặc ngược lại)."""
+    bad = []
+    if isinstance(obj, str):
+        if obj.count("**") % 2:
+            bad.append((path, obj))
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            bad += find_unbalanced_bold(v, f"{path}.{k}")
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            bad += find_unbalanced_bold(v, f"{path}[{i}]")
+    return bad
+
+
 def validate(rep):
     err = []
     if not isinstance(rep, dict):
@@ -101,6 +116,10 @@ def validate(rep):
     leftovers = sorted({m for m in re.findall(r"«[^»]{0,40}»?", json.dumps(rep, ensure_ascii=False))})
     if leftovers:
         err.append(f"Còn {len(leftovers)} chữ mẫu «…» chưa thay bằng nội dung thật, vd: {', '.join(leftovers[:5])}")
+    bold_bad = find_unbalanced_bold(rep)
+    if bold_bad:
+        samples = "; ".join(f"{p}: \"{t[:60]}\"" for p, t in bold_bad[:5])
+        err.append(f"Có {len(bold_bad)} chỗ dùng ** không khớp cặp (thiếu ** đóng hoặc thừa ** mở): {samples}")
     for k in (rep.get("theme") or {}):
         if k not in THEME_KEYS:
             err.append(f"theme.{k}: không có biến này. Dùng: {', '.join(sorted(THEME_KEYS))}")
@@ -235,6 +254,11 @@ def check_block(blk, w, err):
         for p, it in enumerate(blk.get("items") or [], 1):
             if not isinstance(it, dict) or not {"label", "value", "percent"} <= set(it):
                 err.append(f"{w} > item {p}: cần label, value (chữ hiển thị), percent (số 0-100).")
+            elif not isinstance(it["percent"], (int, float)) or not (0 <= it["percent"] <= 100):
+                err.append(f"{w} > item {p}: percent phải là số 0-100 đã tính sẵn (vd 23.0 cho 23%), không phải số thô cần chia.")
+        lw = blk.get("label_width")
+        if lw is not None and not re.fullmatch(r"\d+(\.\d+)?(px|%|ch|em|rem)", str(lw)):
+            err.append(f"{w}: label_width phải là độ dài CSS (vd \"90px\"), không phải tên nhãn.")
     if t == "table":
         ncol = len(blk.get("columns") or [])
         for p, r in enumerate(blk.get("rows") or [], 1):
@@ -349,9 +373,8 @@ def block_html(b):
         return (f'<div class="{cls("blk card table", grow)}" {attr}>{title_html(b)}'
                 f'<table><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table></div>')
     if t == "bars":
-        mx = float(b.get("max") or 100)
         its = "".join(f'<div class="it"><span class="lb">{fmt(it["label"])}</span><div class="tr">'
-                      f'<div class="{cls("fl", it.get("tone"))}" style="width:{max(0, min(100, float(it["percent"]) / mx * 100)):.2f}%">'
+                      f'<div class="{cls("fl", it.get("tone"))}" style="width:{max(0.0, min(100.0, float(it["percent"]))):.2f}%">'
                       f'</div></div><span class="vl">{fmt(it["value"])}</span></div>' for it in b["items"])
         lw = f' style="--lw:{b["label_width"]}"' if b.get("label_width") else ""
         return f'<div class="{cls("blk card bars", grow)}" {attr}{lw}>{title_html(b)}{its}</div>'

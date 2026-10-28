@@ -1,0 +1,467 @@
+{
+ "mau": {
+  "bia": {
+   "ten": "Bìa",
+   "khi": "Mở đầu bộ slide: một câu giá trị, một câu giải thích",
+   "gh": {
+    "tieuDe": 56,
+    "the": 36,
+    "dong": 56,
+    "phu": 140
+   },
+   "mac": {
+    "the": "Tên sự kiện · 2026",
+    "tieuDe": "Một câu nói rõ *giá trị* cho người xem",
+    "phu": "Một câu giải thích ngắn, nói bằng ngôn ngữ của khách hàng.",
+    "dong": "Người trình bày · Đơn vị",
+    "anh": {
+     "src": "asset:banDo",
+     "alt": "Hình minh hoạ"
+    }
+   }
+  },
+  "muc-luc": {
+   "ten": "Mục lục",
+   "khi": "Sau bìa, khi bộ có từ 3 phần trở lên",
+   "gh": {
+    "muc.*.t": 28,
+    "muc.*.d": 40
+   },
+   "ds": {
+    "muc": [
+     3,
+     6
+    ]
+   },
+   "mac": {
+    "tieuDe": "Nội dung",
+    "muc": [
+     {
+      "t": "Phần một",
+      "d": "Một dòng mô tả"
+     },
+     {
+      "t": "Phần hai",
+      "d": "Một dòng mô tả"
+     },
+     {
+      "t": "Phần ba",
+      "d": "Một dòng mô tả"
+     }
+    ]
+   }
+  },
+  "chuong": {
+   "ten": "Ngăn chương",
+   "khi": "Mở đầu một phần lớn, cho người xem nghỉ mắt",
+   "gh": {
+    "so": 3,
+    "tieuDe": 48,
+    "phu": 140
+   },
+   "mac": {
+    "so": "1",
+    "tieuDe": "Tên phần",
+    "phu": "Một câu nói phần này trả lời câu hỏi gì."
+   }
+  },
+  "so-lieu": {
+   "ten": "Số liệu lớn",
+   "khi": "3–6 con số cần người xem nhớ; ô đầu tiên là số quan trọng nhất; mỗi ô một icon theo nghĩa",
+   "gh": {
+    "so.*.so": 10,
+    "so.*.nhan": 56
+   },
+   "ds": {
+    "so": [
+     3,
+     6
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "Một câu nói ý nghĩa của các *con số*",
+    "so": [
+     {
+      "so": "100+",
+      "nhan": "mô tả con số",
+      "icon": "nguoi"
+     },
+     {
+      "so": "50%",
+      "nhan": "mô tả con số",
+      "icon": "tang"
+     },
+     {
+      "so": "24/7",
+      "nhan": "mô tả con số",
+      "icon": "dong-ho"
+     }
+    ],
+    "ketLuan": "Điều người xem cần nhớ.",
+    "nguon": "Nguồn: tên tài liệu (tháng/năm)."
+   }
+  },
+  "van-de": {
+   "ten": "Vấn đề → giải pháp",
+   "khi": "Nêu nỗi đau của khách hàng rồi cách giải quyết",
+   "gh": {
+    "vanDe.t": 48,
+    "vanDe.y.*": 64,
+    "vanDe.so": 8,
+    "vanDe.soNhan": 40,
+    "giaiPhap.t": 48,
+    "giaiPhap.y.*": 64
+   },
+   "ds": {
+    "vanDe.y": [
+     2,
+     4
+    ],
+    "giaiPhap.y": [
+     2,
+     4
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "Nỗi đau của *khách hàng*",
+    "vanDe": {
+     "t": "Khách hàng đang gặp gì",
+     "y": [
+      "Ý thứ nhất",
+      "Ý thứ hai"
+     ]
+    },
+    "giaiPhap": {
+     "t": "Cách giải quyết",
+     "y": [
+      "Ý thứ nhất",
+      "Ý thứ hai"
+     ]
+    },
+    "nguon": ""
+   }
+  },
+  "the": {
+   "ten": "Thẻ đánh số",
+   "khi": "3–6 ý ngang hàng: sản phẩm, lợi ích, khó khăn; mỗi thẻ một icon theo nghĩa (hoặc logo sản phẩm)",
+   "gh": {
+    "the.*.t": 34,
+    "the.*.d": 80
+   },
+   "ds": {
+    "the": [
+     2,
+     6
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "Tiêu đề nhóm *thẻ*",
+    "the": [
+     {
+      "icon": "muc-tieu",
+      "t": "Ý thứ nhất",
+      "d": "Một câu mô tả ngắn."
+     },
+     {
+      "icon": "toc-do",
+      "t": "Ý thứ hai",
+      "d": "Một câu mô tả ngắn."
+     },
+     {
+      "icon": "bao-mat",
+      "t": "Ý thứ ba",
+      "d": "Một câu mô tả ngắn."
+     }
+    ]
+   }
+  },
+  "bang": {
+   "ten": "Bảng so sánh",
+   "khi": "So sánh 2–5 phương án theo cùng tiêu chí",
+   "gh": {
+    "cot.*": 20,
+    "hang.*.0": 16,
+    "hang.*.*": 80
+   },
+   "ds": {
+    "hang": [
+     2,
+     5
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "So sánh các *phương án*",
+    "cot": [
+     "Phương án",
+     "Tiêu chí 1",
+     "Tiêu chí 2"
+    ],
+    "hang": [
+     [
+      "A",
+      "",
+      ""
+     ],
+     [
+      "B",
+      "",
+      ""
+     ]
+    ]
+   }
+  },
+  "lop": {
+   "ten": "Kiến trúc nhiều lớp",
+   "khi": "Nền tảng, kiến trúc xếp tầng; tối đa 10 lớp",
+   "gh": {
+    "lop.*.ma": 4,
+    "lop.*.t": 56,
+    "quanTri": 80,
+    "ghiChu.t": 44,
+    "ghiChu.y.*": 64
+   },
+   "ds": {
+    "lop": [
+     3,
+     10
+    ],
+    "ghiChu.y": [
+     2,
+     4
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "Kiến trúc *nền tảng*",
+    "lop": [
+     {
+      "ma": "L3",
+      "t": "Lớp trên cùng"
+     },
+     {
+      "ma": "L2",
+      "t": "Lớp giữa"
+     },
+     {
+      "ma": "L1",
+      "t": "Lớp hạ tầng"
+     }
+    ],
+    "quanTri": "Xuyên suốt: bảo mật, giám sát",
+    "ghiChu": {
+     "t": "Vì sao quan trọng",
+     "y": [
+      "Lợi ích thứ nhất",
+      "Lợi ích thứ hai"
+     ]
+    }
+   }
+  },
+  "anh": {
+   "ten": "Ảnh có chú giải",
+   "khi": "Ảnh chụp sản phẩm thật, đánh số 2–5 vùng cần chú ý",
+   "gh": {
+    "chuGiai.*.t": 26,
+    "chuGiai.*.d": 44
+   },
+   "ds": {
+    "chuGiai": [
+     2,
+     5
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "Sản phẩm *trông như thế nào*",
+    "anh": {
+     "src": "asset:idecide",
+     "alt": "Ảnh chụp sản phẩm"
+    },
+    "vung": [
+     {
+      "x": 5,
+      "y": 10,
+      "w": 30,
+      "h": 30
+     },
+     {
+      "x": 45,
+      "y": 40,
+      "w": 40,
+      "h": 40
+     }
+    ],
+    "chuGiai": [
+     {
+      "t": "Vùng thứ nhất",
+      "d": "Người dùng làm gì ở đây"
+     },
+     {
+      "t": "Vùng thứ hai",
+      "d": "Người dùng làm gì ở đây"
+     }
+    ]
+   }
+  },
+  "hinh-so": {
+   "ten": "Hình + số liệu",
+   "khi": "Một hình lớn (bản đồ, sản phẩm) kèm 2–4 con số",
+   "gh": {
+    "so.*.so": 8,
+    "so.*.nhan": 40
+   },
+   "ds": {
+    "so": [
+     2,
+     4
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "Một câu về *quy mô*",
+    "anh": {
+     "src": "asset:banDo",
+     "alt": "Hình minh hoạ"
+    },
+    "so": [
+     {
+      "so": "100+",
+      "nhan": "mô tả"
+     },
+     {
+      "so": "20",
+      "nhan": "mô tả"
+     }
+    ]
+   }
+  },
+  "lo-trinh": {
+   "ten": "Lộ trình theo bước",
+   "khi": "3–6 bước triển khai, mỗi bước có thời gian",
+   "gh": {
+    "buoc.*.t": 24,
+    "buoc.*.d": 40,
+    "buoc.*.tg": 12
+   },
+   "ds": {
+    "buoc": [
+     3,
+     6
+    ]
+   },
+   "mac": {
+    "dauMuc": "Phần",
+    "tieuDe": "Các bước *triển khai*",
+    "buoc": [
+     {
+      "t": "Bước một",
+      "d": "Làm gì",
+      "tg": "2 tuần"
+     },
+     {
+      "t": "Bước hai",
+      "d": "Làm gì",
+      "tg": "4 tuần"
+     },
+     {
+      "t": "Bước ba",
+      "d": "Làm gì",
+      "tg": "2 tuần"
+     }
+    ]
+   }
+  },
+  "cam-on": {
+   "ten": "Cảm ơn, liên hệ",
+   "khi": "Kết thúc: một lời mời hành động và cách liên hệ",
+   "gh": {
+    "tieuDe": 44,
+    "phu": 150,
+    "lienHe.*.gt": 44
+   },
+   "ds": {
+    "lienHe": [
+     1,
+     4
+    ]
+   },
+   "mac": {
+    "tieuDe": "Cùng bắt đầu",
+    "phu": "Một lời mời hành động cụ thể.",
+    "lienHe": [
+     {
+      "nhan": "Email",
+      "gt": "vnptai@vnpt.vn"
+     },
+     {
+      "nhan": "Trang web",
+      "gt": "vnptai.io"
+     }
+    ]
+   }
+  }
+ },
+ "gioiHanChung": {
+  "nhan": 28,
+  "dauMuc": 32,
+  "tieuDe": 64,
+  "phu": 150,
+  "ketLuan": 100,
+  "nguon": 130,
+  "loiThoai": 1600,
+  "doiTac": 24
+ },
+ "icon": {
+  "nguoi": "Con người, đội ngũ",
+  "cong-dong": "Cộng đồng, nhiều bên",
+  "khach-hang": "Khách hàng doanh nghiệp, tổ chức",
+  "chinh-phu": "Cơ quan nhà nước",
+  "hop-tac": "Hợp tác, đối tác",
+  "ai": "AI, công nghệ lõi",
+  "agent": "Agent, trợ lý AI",
+  "du-lieu": "Dữ liệu",
+  "may-chu": "Server, hạ tầng tính toán",
+  "chip": "Chip, phần cứng, NPU",
+  "laptop": "Laptop, máy cá nhân",
+  "ai-box": "Thiết bị đóng gói, AI Box",
+  "camera": "Camera, thị giác máy tính",
+  "giong-noi": "Giọng nói, voice",
+  "dien-thoai": "Điện thoại, mobile",
+  "dam-may": "Cloud",
+  "bao-mat": "Bảo mật, an toàn",
+  "lop": "Nhiều lớp, đa luồng",
+  "ket-noi": "Kết nối, tích hợp",
+  "cai-dat": "Cấu hình, kỹ thuật",
+  "dong-ho": "Thời gian",
+  "lich": "Lộ trình, lịch",
+  "toc-do": "Tốc độ, hiệu năng",
+  "tang": "Tăng trưởng",
+  "giam": "Giảm, suy giảm",
+  "bieu-do": "Số liệu, báo cáo",
+  "muc-tieu": "Mục tiêu, chiến lược",
+  "ten-lua": "Triển khai, bứt phá",
+  "tim-kiem": "Tìm kiếm",
+  "giai-thuong": "Giải thưởng",
+  "nghien-cuu": "Nghiên cứu, công bố",
+  "ma-nguon": "Mã nguồn",
+  "canh-bao": "Rủi ro, khó khăn",
+  "dung": "Đạt, cam kết",
+  "y": "Ý tưởng, kết luận",
+  "khuon-mat": "Nhận diện khuôn mặt",
+  "dinh-danh": "Xác thực, định danh",
+  "api": "API, lượt gọi",
+  "token": "Token, mô hình ngôn ngữ",
+  "su-kien": "Sự kiện, luồng dữ liệu",
+  "video": "Video, luồng camera",
+  "tong-dai": "Tổng đài, chăm sóc khách hàng",
+  "tiet-kiem": "Tiết kiệm chi phí",
+  "email": "Email",
+  "goi": "Điện thoại liên hệ",
+  "web": "Trang web, toàn cầu",
+  "dia-chi": "Địa chỉ"
+ }
+}

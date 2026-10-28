@@ -19,6 +19,14 @@ def bootstrap():
         if Path(sys.executable).absolute()==py.absolute():raise RuntimeError('Dependency installation failed')
         os.execv(str(py),[str(py),str(Path(__file__).resolve()),*sys.argv[1:]])
 
+def tidy_workspace(w, wd, keep_names):
+    """Move pipeline scaffolding into the existing _review/<name> scratch folder, leaving only the final HTML (and session.json, needed to resume/report status) visible at the top level."""
+    for item in list(w.iterdir()):
+        if item.name in keep_names or wd.resolve().is_relative_to(item.resolve()): continue
+        dest=wd/item.name
+        if dest.exists(): shutil.rmtree(dest) if dest.is_dir() else dest.unlink()
+        shutil.move(str(item),str(dest))
+
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def save(p,d):Path(p).write_text(json.dumps(d,ensure_ascii=False,indent=2),encoding='utf8')
 def helper():
@@ -56,7 +64,11 @@ def main():
         if not src.is_file() or sha(src)!=st['source_sha256']:raise ValueError('Cannot recover: copied source missing or changed')
         repairs=st.setdefault('maintenance',[]);save(w/f'session-before-recovery-{len(repairs)+1}.json',st)
         repairs.append({'reason':'Explicit recovery after driver update or agent path edit','previous_source':st['source'],'previous_skill_hashes':st['skill_hashes'],'new_skill_hashes':m.skill_hashes()})
-        st.update(source=str(src),skill_hashes=m.skill_hashes());save(w/'session.json',st)
+        expected=[wd/'content.md',wd/'facts.json',wd/'source-map.json']
+        missing=[str(p) for p in expected if not p.is_file()]
+        if missing:raise ValueError('Cannot recover: missing prepared files '+', '.join(missing)+'; start a new run')
+        new_prepared={str(p):sha(p) for p in expected}
+        st.update(source=str(src),skill_hashes=m.skill_hashes(),prepared_hashes=new_prepared);save(w/'session.json',st)
         return resume_task(w,wd,st)
     for path,digest in st.get('prepared_hashes',{}).items():
         if not Path(path).is_file() or sha(path)!=digest:raise ValueError('Prepared evidence changed; start a new run')
@@ -67,13 +79,31 @@ def main():
     if phase=='prepare':raise ValueError('Prepare did not complete; inspect prepare.log and start a new output after fixing the environment')
     if phase=='complete':print(json.dumps(st,ensure_ascii=False));return
     if phase=='candidates':
-        m.tool(w,src,'verify');v=json.loads((wd/'verified.json').read_text());bad=[x for x in v['issues'] if x['status']=='REJECT']
+        try:
+            m.tool(w,src,'verify')
+        except RuntimeError as error:
+            st['repairs']['candidates_error']=st['repairs'].get('candidates_error',0)+1
+            if st['repairs']['candidates_error']>2:raise
+            return task(w,st,'Sửa lỗi kỹ thuật trong candidates.json',f'{wd}/candidates.json chưa qua được verify vì lỗi định dạng/schema (không phải REJECT nội dung từng mục). Lỗi thật từ công cụ: {error}\nSửa đúng lỗi này theo mẫu ở {S}/references/candidates.md rồi chạy next_command.')
+        v=json.loads((wd/'verified.json').read_text());bad=[x for x in v['issues'] if x['status']=='REJECT']
         if bad and not st['repairs'].get('candidates'):
             st['repairs']['candidates']=1;save(wd/'rejected-before-repair.json',bad)
             return task(w,st,'Sửa trích dẫn một lần',f'Đọc {w}/verify.log và {wd}/content.md. Sửa {wd}/candidates.json chỉ với căn cứ nguyên văn, không sửa source hay skill. Không sửa bằng chuỗi thay thế chưa đối chiếu file. Ghi JSON đầy đủ nếu cần, rồi chạy next_command.')
         if bad:
-            save(wd/'rejected-after-repair.json',bad);c=json.loads((wd/'candidates.json').read_text());ids={x['id'] for x in bad};c['issues']=[x for x,vx in zip(c['issues'],v['issues']) if vx['id'] not in ids];c.setdefault('notes',[]).extend('Không qua kiểm trích dẫn: '+x['title']+'. '+x['reason'] for x in bad);save(wd/'candidates.json',c);m.tool(w,src,'verify')
-        m.tool(w,src,'critique');st['phase']='critique'
+            save(wd/'rejected-after-repair.json',bad);c=json.loads((wd/'candidates.json').read_text());ids={x['id'] for x in bad};c['issues']=[x for x,vx in zip(c['issues'],v['issues']) if vx['id'] not in ids];c.setdefault('notes',[]).extend('Không qua kiểm trích dẫn: '+x['title']+'. '+x['reason'] for x in bad);save(wd/'candidates.json',c)
+            try:
+                m.tool(w,src,'verify')
+            except RuntimeError as error:
+                st['repairs']['candidates_error']=st['repairs'].get('candidates_error',0)+1
+                if st['repairs']['candidates_error']>2:raise
+                return task(w,st,'Sửa lỗi kỹ thuật trong candidates.json',f'{wd}/candidates.json chưa qua được verify sau khi loại các mục REJECT. Lỗi thật từ công cụ: {error}\nSửa đúng lỗi này rồi chạy next_command.')
+        try:
+            m.tool(w,src,'critique')
+        except RuntimeError as error:
+            st['repairs']['critique_error']=st['repairs'].get('critique_error',0)+1
+            if st['repairs']['critique_error']>2:raise
+            return task(w,st,'Sửa lỗi kỹ thuật trước khi phản biện',f'Bước critique chưa chạy được. Lỗi thật từ công cụ: {error}\nKiểm tra {wd}/candidates.json/verified.json rồi chạy next_command.')
+        st['phase']='critique'
         return task(w,st,'Phản biện trước khi giữ nhận xét',f'Đọc TOÀN BỘ {wd}/critique_task.md; phản biện từng trường bằng nguồn và phản chứng. Viết {wd}/critique.json đúng schema, đủ tất cả ID. Nếu có ngữ cảnh mới thì dùng; nếu không, ghi hạn chế phản biện cùng ngữ cảnh. Không lấy nguyên văn đúng làm bằng chứng cho suy luận đúng. Chú ý tác động/mức độ/fix: nội dung đã có thì không yêu cầu thêm lại, các nhóm không đồng nghĩa từng sản phẩm, không coi số viết tắt metadata là tên sai, không xác quyết pháp lý hay đối thủ từ kiến thức chưa kiểm. Không gọi prepare/verify/build thủ công; viết JSON rồi chạy next_command.')
     if phase=='critique':
         c=json.loads((wd/'critique.json').read_text());v=json.loads((wd/'verified.json').read_text());required=[x['id'] for x in v['issues'] if x['status']=='OK']
@@ -81,7 +111,13 @@ def main():
             st['repairs']['critique']=st['repairs'].get('critique',0)+1
             if st['repairs']['critique']>2:raise ValueError('Critique still incomplete after two repairs')
             return task(w,st,'Bổ sung phản biện còn thiếu',f'Đọc {wd}/critique_task.md. Viết đủ key {required} vào {wd}/critique.json theo schema, có counterevidence.locations và counterevidence.finding cho mỗi ID. Không đổi candidates. Chạy next_command.')
-        m.tool(w,src,'build');st['phase']='details'
+        try:
+            m.tool(w,src,'build')
+        except RuntimeError as error:
+            st['repairs']['build_error']=st['repairs'].get('build_error',0)+1
+            if st['repairs']['build_error']>2:raise
+            return task(w,st,'Sửa lỗi kỹ thuật trước khi build',f'Bước build chưa chạy được. Lỗi thật từ công cụ: {error}\nKiểm tra {wd}/critique.json rồi chạy next_command.')
+        st['phase']='details'
         return details_task(w,wd,st)
     if phase=='details':
         d=json.loads((wd/'report-details.json').read_text());d.update(source_sha256=sha(src),verified_sha256=sha(wd/'verified.json'),render_manifest=json.loads((w/'render-manifest.json').read_text()),model=st['model']);save(wd/'report-details.json',d)
@@ -92,6 +128,7 @@ def main():
             if st['repairs']['details']>2:raise
             return details_task(w,wd,st,str(error))
         st.update(phase='complete',state='BUILT',output=str(w/('Danh_gia_'+src.stem+'.html')),output_sha256=audit['output_sha256'],all_pass=audit['all_pass']);save(w/'session.json',st);save(w/'status.json',st)
+        tidy_workspace(w,wd,{Path(st['output']).name,'session.json',src.name})
         print(json.dumps(st,ensure_ascii=False));return
     raise ValueError('Unknown checkpoint phase')
 

@@ -38,7 +38,7 @@ def write_status(work, done, result, nxt):
         f"# Trạng thái báo cáo – cập nhật {datetime.now():%d/%m/%Y %H:%M}\n\n"
         f"Đọc file này trước tiên nếu vừa bị ngắt hoặc mất ngữ cảnh.\n\n"
         f"- SKILL_DIR: `{SKILL}`\n- Lệnh R: `{r}`\n- WORK: `{work}`\n"
-        f"- Hướng dẫn: `{SKILL / 'SKILL.md'}` · `{SKILL / 'references' / 'schema.md'}`\n"
+        f"- Hướng dẫn: `{SKILL / 'SKILL.md'}` · `{SKILL / 'references' / 'huong-dan-k7.md'}`\n"
         f"- File trong WORK: {files}\n\n## Bước vừa xong\n{done}\n\n## Kết quả\n{result}\n\n"
         f"## Việc tiếp theo\n{nxt}\n", encoding="utf-8")
 
@@ -105,6 +105,12 @@ def cmd_extract(a):
     (work / "content.md").write_text(content, encoding="utf-8")
     lines = content.count("\n") + 1
     out(f"Đã trích {len(listing)} file -> {work / 'content.md'} ({len(content):,} ký tự, {lines:,} dòng)")
+    kicker_hits = len(re.findall(r"\b\d{1,2}\s*/\s*\d{1,2}\s*·", content))
+    if "THÔNG ĐIỆP TỔNG HỢP TRÌNH LÃNH ĐẠO" in content.upper() or kicker_hits >= 3:
+        out("CẢNH BÁO NGUỒN: văn bản trích ra có dấu hiệu là MỘT BÁO CÁO DO CHÍNH SKILL NÀY ĐÃ XUẤT RA TRƯỚC ĐÂY "
+            "(thấy kicker 'THÔNG ĐIỆP TỔNG HỢP TRÌNH LÃNH ĐẠO' và/hoặc nhiều tiêu đề dạng 'NN / NN ·'), "
+            "không phải bảng theo dõi/tài liệu gốc. DỪNG LẠI, hỏi người dùng xác nhận đúng file nguồn trước khi viết tiếp — "
+            "không tự coi báo cáo cũ là nguồn, vì sẽ lặp lại nguyên mọi số liệu và lỗi của bản cũ.")
     for k, name, typ, pages, n, sub, meta in listing:
         out(f"  NGUỒN {k}: {name} [{typ}, {pages or '?'} trang/slide, {n:,} ký tự]"
             + (f" – ảnh trang: {sub / 'pages'}" if meta["page_images"] else ""))
@@ -165,11 +171,13 @@ def cmd_new(a):
     else:
         shutil.copy(SKILL / "assets" / "skeleton.json", dst)
         out(f"Đã tạo {dst} từ khung mẫu.")
-    write_status(work, "Bước 3 – tạo khung report.json", "report.json là khung «…», chưa có nội dung thật",
-                 f"Viết lại toàn bộ report.json từ notes.md (theo schema.md), rồi `R build {work}`.")
-    out(f"NEXT: đọc {SKILL / 'references' / 'schema.md'} và {SKILL / 'references' / 'writing_guide.md'}, "
-        f"xem ví dụ {SKILL / 'examples' / 'atbm-vm' / 'report.json'}, rồi VIẾT LẠI TOÀN BỘ {dst} "
-        f"bằng nội dung của tài liệu nguồn. Xong chạy `report.py build {work}`.")
+    from k7_build import K7
+    write_status(work, "Bước 3 – tạo khung report.json", "report.json gần như rỗng, chưa có nội dung thật",
+                 f"Viết lại toàn bộ report.json theo 12 mẫu K7 (huong-dan-k7.md), rồi `R build {work}`.")
+    out(f"NEXT: đọc {SKILL / 'references' / 'huong-dan-k7.md'} (mục 4-9: cấu trúc, 12 mẫu, giới hạn chữ, icon), "
+        f"xem ví dụ {K7 / 'vi-du' / 'vnpt-idecide.json'} và {K7 / 'vi-du' / 'gioi-thieu-vnpt-ai.json'}, "
+        f"rồi VIẾT LẠI TOÀN BỘ {dst} bằng nội dung của tài liệu nguồn, chọn mẫu phù hợp cho từng slide. "
+        f"Xong chạy `report.py build {work}`.")
 
 
 # ---------------------------------------------------------------- build
@@ -201,11 +209,26 @@ def load_json(path):
                       f"    {ctx}")
 
 
+# K7 (mau: bia/so-lieu/the/...): trường toạ độ/tên kỹ thuật, không phải nội dung cần đối chiếu nguồn.
+# "mau","icon","src","x","y","w","h","logo","nen","noi","soMuc" theo đúng BO_QUA của k7/cong-cu/kiem-slide.py.
 SKIP_KEYS = {"kicker", "num", "weight", "percent", "cols", "tone", "type", "max", "label_width",
-             "output_name", "sources", "computed", "theme", "gap", "grow", "dark", "num_cols", "date"}
+             "output_name", "sources", "computed", "theme", "gap", "grow", "dark", "num_cols", "date",
+             "mau", "icon", "src", "x", "y", "w", "h", "logo", "nen", "noi", "soMuc", "ban", "ngonNgu",
+             "canXacNhan", "id", "ma"}
+
+
+def _is_bilingual(d):
+    return isinstance(d, dict) and ("vi" in d or "en" in d) and not any(isinstance(x, (dict, list)) for x in d.values())
 
 
 def iter_texts(node, slide=None, key=None):
+    """Duyệt mọi chuỗi chữ cần đối chiếu nguồn. Ô song ngữ K7 {"vi":.., "en":..}: chỉ lấy "vi" -
+    nguồn luôn tiếng Việt, và số kiểu Anh (1,272) sẽ bị báo nhầm là không khớp nếu lấy cả "en"."""
+    if _is_bilingual(node):
+        v = node.get("vi") or node.get("en") or ""
+        if v:
+            yield slide, re.sub(r"^\s*\d+[a-z]?\s*[·|:–—-]\s*", "", v) if key == "dauMuc" else v
+        return
     if isinstance(node, dict):
         for k, v in node.items():
             if k in SKIP_KEYS:
@@ -215,7 +238,7 @@ def iter_texts(node, slide=None, key=None):
         for v in node:
             yield from iter_texts(v, slide, key)
     elif isinstance(node, str):
-        yield slide, node
+        yield slide, re.sub(r"^\s*\d+[a-z]?\s*[·|:–—-]\s*", "", node) if key == "dauMuc" else node
 
 
 UNIT_RE = re.compile(r"\s?(%|tỷ|triệu|nghìn|ngàn|TB|GB|Gbps|Mbps)(?![\wÀ-ỹ])", re.IGNORECASE)
@@ -230,56 +253,113 @@ def slide_texts(s):
         yield SECTION_NO.sub("", s["kicker"])
 
 
+# Vietnamese numbers: dots group thousands only in groups of three; comma is
+# decimal. A lone dot with a different group length is a decimal (e.g. 34.6%).
+NUMBER_PATTERN = r"\d+(?:[.,]\d+)*"
+
+
+def numeric_value(token):
+    from decimal import Decimal
+    token = token.strip()
+    if re.fullmatch(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?", token):
+        token = token.replace(".", "")
+    return Decimal(token.replace(",", "."))
+
+
+def percent_matches(value, shown):
+    """Accept only rounding to the precision explicitly displayed (half up)."""
+    from decimal import Decimal, ROUND_HALF_UP
+    if value is None:
+        return False
+    decimal = shown.split(",", 1)[1] if "," in shown else (
+        shown.split(".", 1)[1] if "." in shown and not re.fullmatch(r"\d{1,3}(?:\.\d{3})+", shown) else "")
+    quantum = Decimal(1).scaleb(-len(decimal))
+    return value.quantize(quantum, rounding=ROUND_HALF_UP) == numeric_value(shown)
+
+
 def check_numbers(rep, content):
-    """Mọi con số trong báo cáo phải có trong nguồn (kèm đơn vị nếu có: %, tỷ, triệu…),
-    hoặc khai ở meta.computed kèm phép tính. Trả về {chuỗi số: {slide}}."""
+    """Compare numeric values, retaining units. Ratios must be evidenced before
+    their rounded percentages are accepted. Never match computed substrings."""
+    from decimal import Decimal
     src = re.sub(r"\s+", " ", content)
-    src_l = src.lower()
-    src_tokens = set(re.findall(r"\d+(?:[.,]\d+)*", src))  # so nguyên con số: '1.102,9' ≠ '1.102,918'
-
-    def has_unit(x, unit):
-        return re.search(rf"(?<![\d.,]){re.escape(x)}(?![\d]|[.,]\d)\s?{re.escape(unit)}", src_l) is not None
-
-    computed = [str(c.get("value", "")).strip().lower() for c in (rep.get("meta", {}).get("computed") or [])
+    computed = [str(c.get("value", "")) for c in rep.get("meta", {}).get("computed", [])
                 if isinstance(c, dict) and c.get("formula")]
+    values = set()
+    units = {}
+    for text in [src] + computed:
+        for m in re.finditer(NUMBER_PATTERN, text):
+            value = numeric_value(m.group())
+            values.add(value)
+            unit = UNIT_RE.match(text, m.end())
+            if unit:
+                units.setdefault(unit.group(1).lower(), set()).add(value)
+    ratio_re = re.compile(r"(?<![\d/.,])(" + NUMBER_PATTERN + r")\s*/\s*(" + NUMBER_PATTERN + r")(?![\d/.,])")
+    source_ratios = {(numeric_value(m[1]), numeric_value(m[2])) for m in ratio_re.finditer(src)}
     missing = {}
+    for i, slide in enumerate(rep["slides"], 1):
+        for text in slide_texts(slide):
+            # Only a directly associated fraction may justify a derived %.
+            linked = {}
+            pattern = ratio_re.pattern + r"([^%/\n]{0,45}?)(\d+(?:[.,]\d+)?)\s*%"
+            for pair in re.finditer(pattern, text):
+                a, b = numeric_value(pair[1]), numeric_value(pair[2])
+                bridge = pair[3]
+                if (a, b) not in source_ratios or not b:
+                    continue
+                if re.search(r"\d|[,;>≥<≤]|trọng số|điểm|hạng|mục tiêu|tăng|giảm|so với|kế hoạch", bridge, re.I):
+                    continue
+                if percent_matches(a / b * Decimal(100), pair[4]):
+                    linked[pair.start(4)] = True
+            for m in re.finditer(NUMBER_PATTERN, text):
+                tok = m.group(); value = numeric_value(tok)
+                u = UNIT_RE.match(text, m.end())
+                if len(tok) < 2 and not u:
+                    continue
+                if re.match(r"[/.,]\d", text[m.end():m.end()+2]):
+                    continue
+                if u:
+                    unit = u.group(1).lower()
+                    known = units.get(unit, set())
+                    valid = value in known
+                    if unit == "%":
+                        valid = valid or m.start() in linked or any(percent_matches(v, tok) for v in known)
+                    if not valid:
+                        shown = tok + ("" if unit == "%" else " ") + u.group(1)
+                        missing.setdefault(shown, set()).add(i)
+                elif value not in values:
+                    missing.setdefault(tok, set()).add(i)
+    return missing
+
+
+def check_number_format(rep):
+    """Cùng một con số (>=4 chữ số) nhưng viết khác cách nhau (có chỗ có dấu chấm phân cách nghìn, có chỗ không)."""
+    seen = {}
     for i, s in enumerate(rep["slides"], 1):
         for text in slide_texts(s):
-            for m in re.finditer(r"\d+(?:[.,]\d+)*", text):
+            for m in re.finditer(r"(?<![\d.,])\d{1,3}(?:\.\d{3})+(?![\d.,])|(?<![\d.,])\d{4,}(?![\d.,])", text):
                 tok = m.group(0)
-                if len(tok) < 2 and not UNIT_RE.match(text, m.end()):
-                    continue
-                if re.match(r"[/.,]\d", text[m.end():m.end() + 2]):
-                    continue  # một phần của ngày tháng / số dài đã xét
-                alt = tok.translate(str.maketrans(",.", ".,"))
-                u = UNIT_RE.match(text, m.end())
-                if u:  # số có đơn vị: nguồn phải có đúng số đó kèm đơn vị đó
-                    unit = u.group(1).lower()
-                    forms = [f"{x}{sp}{unit}" for x in (tok, alt) for sp in ("", " ")]
-                    shown = f"{tok}{'' if unit == '%' else ' '}{u.group(1)}"
-                    if has_unit(tok, unit) or has_unit(alt, unit) or any(f.lower() in c for f in forms for c in computed):
-                        continue
-                    missing.setdefault(shown, set()).add(i)
-                    continue
-                if tok in src_tokens or alt in src_tokens or any(tok in c for c in computed):
-                    continue
-                missing.setdefault(tok, set()).add(i)
-    return missing
+                bare = tok.replace(".", "")
+                seen.setdefault(bare, {}).setdefault(tok, set()).add(i)
+    errs = []
+    for bare, variants in seen.items():
+        if len(variants) > 1:
+            parts = "; ".join(f"\"{v}\" (slide {','.join(map(str, sorted(sl)))})" for v, sl in variants.items())
+            errs.append(f"số {bare}: {parts}")
+    return errs
 
 
 def _pct_ok(a, b, shown):
     """a/b có làm tròn ra đúng 'shown' (chuỗi % như '37,5') không."""
     if not b:
-        return True
-    want = vn_num(shown)
-    dec = len(shown.split(",")[1]) if "," in shown else 0
-    return abs(a / b * 100 - want) <= 0.5 * 10 ** -dec + 1e-9
+        return False
+    from decimal import Decimal
+    return percent_matches(Decimal(str(a)) / Decimal(str(b)) * Decimal(100), shown)
 
 
 def check_consistency(rep):
     """Số trong báo cáo tự mâu thuẫn: tỷ lệ % không khớp phân số đi kèm, thanh tỷ lệ, tiến độ."""
     errs = []
-    frac = re.compile(r"(?<![\d/.,])(\d[\d.,]*)\s*/\s*(\d[\d.,]*)(?![\d/])([^%/\n]{0,45}?)(\d+(?:,\d+)?)\s?%")
+    frac = re.compile(r"(?<![\d/.,])(\d[\d.,]*)\s*/\s*(\d[\d.,]*)(?![\d/])([^%/\n]{0,45}?)(\d+(?:[.,]\d+)?)\s?%")
     for i, s in enumerate(rep["slides"], 1):
         blocks = []
         for row in s.get("rows") or []:
@@ -313,6 +393,9 @@ def check_consistency(rep):
                     a, bb = vn_num(m.group(1)), vn_num(m.group(2))
                 except ValueError:
                     continue
+                if not bb:
+                    errs.append(f"slide {i}: tỷ lệ có mẫu số 0: {m.group(0).strip()}")
+                    continue
                 if not _pct_ok(a, bb, m.group(4)):
                     right = f"{a / bb * 100:.2f}".rstrip("0").rstrip(".").replace(".", ",")
                     errs.append(f"slide {i}: “{m.group(0).strip()}” – {m.group(1)}/{m.group(2)} = {right}%")
@@ -339,10 +422,13 @@ def check_example_leak(rep, content):
     """Cụm 3 từ lấy từ ví dụ mẫu mà nguồn không có -> nhiều khả năng chép nhầm (vd 'CHUYÊN ĐỀ 05').
     Chỉ xét cụm có chữ số hoặc có từ hoàn toàn không xuất hiện trong nguồn (tránh báo nhầm cụm thông dụng).
     'Có trong nguồn' = 3 từ cùng xuất hiện trong khoảng 12 từ liên tiếp (PDF nhiều cột hay làm đứt cụm)."""
-    ex = SKILL / "examples" / "atbm-vm" / "report.json"
-    if not ex.exists():
+    from k7_build import K7
+    ex_files = sorted((K7 / "vi-du").glob("*.json"))
+    if not ex_files:
         return []
-    ex_slides = json.loads(ex.read_text(encoding="utf-8"))["slides"]
+    ex_slides = []
+    for ex in ex_files:
+        ex_slides += json.loads(ex.read_text(encoding="utf-8")).get("slides", [])
     ex_ng = set()
     for s in ex_slides:
         for t in slide_texts(s):
@@ -363,20 +449,13 @@ def check_example_leak(rep, content):
         return False
 
     hits = {}
-    # Kicker bìa hay bị chép nhất: xét cả cụm 2 từ (vd “chuyên đề” trong “VNPT · CHUYÊN ĐỀ HĐQT”)
-    ex_cover = next((x for x in ex_slides if x.get("type") == "cover"), {})
-    cover = next((x for x in rep["slides"] if x.get("type") == "cover"), {})
-    src_bi = _ngrams(content, 2)
-    for g in _ngrams(cover.get("kicker", ""), 2) & _ngrams(ex_cover.get("kicker", ""), 2):
-        if g not in src_bi:
-            hits.setdefault(g, set()).add(rep["slides"].index(cover) + 1)
     for i, s in enumerate(rep["slides"], 1):
         for text in slide_texts(s):
             for g in _ngrams(text) & ex_ng:
                 ws = g.split()
                 # A missing common word is not evidence of copying. Require a
-                # template identifier, technical acronym, number, or named unit.
-                distinctive = bool(re.search(r"\d|\b(?:vm|vms|atbm|vcenter|esxi|siem|edr|epp|pam|ssh|nt[l]?|oss|erp)\b|vnpt\s+net", g, re.I))
+                # number (stat copied from the wrong deck) as the distinctive signal.
+                distinctive = bool(re.search(r"\d", g))
                 if distinctive and not in_source(g):
                     hits.setdefault(g, set()).add(i)
     return sorted(hits.items(), key=lambda kv: min(kv[1]))
@@ -493,7 +572,7 @@ def check_semantic_scope(rep, work):
 
 
 def cmd_build(a):
-    from render_html import autofix, validate, render
+    from k7_build import kiem_k7, render_k7
     path, work = resolve_json(a.target)
     if not path.exists():
         raise SystemExit(f"LỖI: không thấy {path}. NEXT: report.py new {work}")
@@ -507,25 +586,24 @@ def cmd_build(a):
         out("[1] Cấu trúc: LỖI\n  " + err)
         out(f"NEXT: sửa đúng dòng trên trong {path} rồi chạy lại `report.py build {work}`.")
         sys.exit(1)
-    fixed = autofix(rep)
-    if fixed:
-        path.write_text(json.dumps(rep, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        out(f"[1a] Tự sửa {len(fixed)} lỗi nhỏ (đã ghi lại vào report.json, không cần làm gì):")
-        for f in fixed[:10]:
-            out("  - " + f)
-    errors = validate(rep)
+    ds = kiem_k7(rep)
+    errors = [f"{x['vi_tri']} · {x['ma']}: {x['y']}" for x in ds if x["muc"] == "loi"]
+    nhac = [x for x in ds if x["muc"] == "nhac"]
     if errors:
-        out(f"[1] Cấu trúc: LỖI ({len(errors)})")
+        out(f"[1] Cấu trúc (K7 kiem-slide.py): LỖI ({len(errors)})")
         for e in errors[:30]:
             out("  - " + e)
-        out(f"NEXT: sửa các mục trên (tra {SKILL / 'references' / 'schema.md'}) rồi chạy lại build.")
+        out(f"NEXT: sửa các mục trên (tra {SKILL / 'references' / 'huong-dan-k7.md'} mục 4-9) rồi chạy lại build.")
         sys.exit(1)
-    out(f"[1] Cấu trúc: OK ({len(rep['slides'])} slide)")
+    out(f"[1] Cấu trúc (K7 kiem-slide.py): OK ({len(rep['slides'])} slide" +
+        (f", {len(nhac)} nhắc" if nhac else "") + ")")
+    for x in nhac[:10]:
+        out(f"  (nhắc) {x['vi_tri']} · {x['ma']}: {x['y']}")
 
-    name = rep["meta"].get("output_name") or path.stem
+    name = (rep.get("meta") or {}).get("output_name") or path.stem
     name = re.sub(r"[^\w.-]+", "_", name, flags=re.UNICODE)
     html_path = work / f"{name}.html"
-    html_path.write_text(render(rep, SKILL), encoding="utf-8")
+    html_path.write_text(render_k7(rep), encoding="utf-8")
     out(f"[2] HTML: {html_path}")
 
     problems = []
@@ -586,6 +664,13 @@ def cmd_build(a):
                 problems.append("gắn sai đơn vị/trạng thái")
         elif list((work / "tracker").glob("*/tracker.json")) if (work / "tracker").exists() else False:
             out("[3f] Gắn số/trạng thái đúng đơn vị: OK")
+        fmt_err = check_number_format(rep)
+        if fmt_err:
+            out(f"[3h] Định dạng số: NHẮC – {len(fmt_err)} số viết không nhất quán giữa các slide:")
+            for e in fmt_err[:15]:
+                out("  - " + e)
+            out("    Cùng một số phải viết giống nhau mọi nơi trong báo cáo (có dấu chấm phân cách nghìn thì dùng xuyên suốt).")
+            # Equivalent grouping styles are editorial, never a blocking error.
         unused = unused_source_numbers(rep, content_file.read_text(encoding="utf-8"))
         if unused:
             out(f"[3c] Số trong nguồn CHƯA dùng ({len(unused)}) – không phải lỗi; kiểm tra có bỏ sót ý quan trọng "
@@ -597,36 +682,24 @@ def cmd_build(a):
     else:
         out(f"[3] Số liệu: BỎ QUA (không có {content_file}; chạy `report.py extract … --work {work}` để bật kiểm tra)")
 
-    from export_pdf import find_browser, check_overflow, print_pdf, pdf_pages, previews
+    from export_pdf import find_browser, print_pdf, pdf_pages, previews
+    from k7_build import check_overflow_k7
     browser = find_browser()
     if not browser:
         out("[4] Tràn chữ: BỎ QUA – không tìm thấy Chrome/Edge/Chromium (xem `report.py env`).")
     else:
-        ov, fit, e = check_overflow(browser, html_path)
-        fit_note = ("; đã tự thu nhỏ chữ: " + ", ".join(f"slide {f['slide']} còn {f['scale']}%" for f in fit)) if fit else ""
+        ov, e = check_overflow_k7(browser, html_path)
         if e:
             out(f"[4] Tràn chữ: BỎ QUA – {e}")
         elif ov:
-            out(f"[4] Tràn chữ: LỖI ở {len(ov)} slide, thu nhỏ chữ còn 78% vẫn không vừa (khung đỏ khi mở HTML):")
+            out(f"[4] Tràn chữ (K7 M7): LỖI ở {len(ov)} chỗ (khung K7 khoá sẵn, không tự thu nhỏ chữ được):")
             for o in ov:
-                px = max([int(x) for p in o["parts"] for x in re.findall(r"thừa (\d+)px", p)] or [0])
-                hint = f" → cần bớt khoảng {max(1, -(-px // 24))} dòng chữ (~{max(1, -(-px // 24)) * 60} ký tự)" if px else ""
-                out(f"  - slide {o['slide']}: {'; '.join(o['parts'][:4])}{hint}")
-            out("    Cách sửa (theo thứ tự): rút gọn câu; bớt mục; đổi cols cho khối dài rộng hơn; bỏ 'lead'; "
-                "tách slide. KHÔNG sửa CSS.")
+                out(f"  - slide {o['slide']}: {o['y']}")
+            out("    Cách sửa: rút gọn câu trong giới hạn ký tự của mẫu (HUONG-DAN-CHO-AI.md mục 5); "
+                "bớt mục trong danh sách; tách sang slide khác. KHÔNG sửa CSS/HTML của khung.")
             problems.append("tràn chữ")
         else:
-            out("[4] Tràn chữ: OK" + fit_note)
-        allsp = getattr(check_overflow, "sparse", [])
-        wraps = [s["slide"] for s in allsp if s.get("title")]
-        if wraps:
-            out("[4b] Tiêu đề xuống 2 dòng ở slide " + ", ".join(map(str, wraps))
-                + " (không phải lỗi): nên rút tiêu đề còn ≤ 45 ký tự cho gọn 1 dòng.")
-        sparse = [s for s in allsp if s.get("px", 0) >= 200]
-        if sparse and not ov:
-            out("[4b] Bố cục: slide còn trống nhiều (không phải lỗi): "
-                + ", ".join(f"slide {s['slide']} trống ~{s['px']}px" for s in sparse)
-                + ". Nếu nguồn còn ý liên quan thì bổ sung; nếu không, gộp với slide khác hoặc để nguyên.")
+            out("[4] Tràn chữ: OK")
 
     if browser and not a.no_pdf:
         pdf_path = work / f"{name}.pdf"
@@ -648,11 +721,20 @@ def cmd_build(a):
         out("[5] PDF: BỎ QUA")
 
     if problems:
+        if attempts > MAX_ATTEMPTS:
+            write_status(work, "Bước 4 – build", f"DỪNG SAU {attempts - 1} LẦN SỬA: vẫn còn {', '.join(problems)}",
+                         f"KHÔNG chạy build nữa. Báo người dùng: bản nháp {html_path.name}, log {work / 'build.log'}, "
+                         f"các lỗi còn lại ở trên. Để người dùng quyết định sửa tay hay đổi cách trình bày.")
+            out(f"\nKẾT QUẢ: DỪNG – đã sửa {attempts - 1} lần vẫn còn lỗi ({', '.join(problems)}).")
+            out(f"NEXT: KHÔNG gọi build lại nữa. Dừng ở đây, báo người dùng rõ: còn lỗi gì (xem trên), "
+                f"bản nháp đang có ở {html_path}, chi tiết ở {work / 'build.log'}. Không tự ý rút gọn nội dung quan trọng "
+                f"để né lỗi tràn chữ; để người dùng quyết định.")
+            sys.exit(1)
         write_status(work, "Bước 4 – build", f"CẦN SỬA: {', '.join(problems)} (chạy lại build để xem chi tiết)",
                      f"Sửa report.json (ghi lại toàn bộ file) theo các dòng LỖI, rồi `R build {work}`.")
         out(f"\nKẾT QUẢ: CẦN SỬA ({', '.join(problems)})")
         out(f"NEXT: sửa {path} theo các dòng LỖI ở trên rồi chạy lại `report.py build {work}`."
-            + (" Đã quá 3 lần: nếu vẫn lỗi, dừng và báo người dùng các lỗi còn lại." if attempts >= MAX_ATTEMPTS + 2 else ""))
+            + (f" Còn {MAX_ATTEMPTS - attempts + 1} lần thử nữa trước khi PHẢI dừng và báo người dùng." if attempts >= MAX_ATTEMPTS - 1 else ""))
         sys.exit(1)
     attempts_file.unlink(missing_ok=True)
     write_status(work, "Bước 4 – build", f"XONG: {html_path.name} + PDF, {len(rep['slides'])} slide. "

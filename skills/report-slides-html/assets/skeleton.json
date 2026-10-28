@@ -1,57 +1,9 @@
 {
   "meta": {
-    "title": "«Tên báo cáo ngắn, dùng làm tiêu đề tab và tên tài liệu»",
-    "output_name": "«Ten_file_khong_dau»",
-    "author": "«Đơn vị báo cáo»",
-    "date": "«dd/mm/yyyy»",
-    "sources": ["«tên file nguồn 1»"],
-    "computed": []
+    "id": "",
+    "ten": {"vi": "", "en": ""}
   },
   "slides": [
-    {
-      "type": "cover",
-      "kicker": "«ĐƠN VỊ · CHUYÊN ĐỀ»",
-      "title": "«Báo cáo tiến độ …»",
-      "subtitle": "«Phạm vi / đối tượng báo cáo»",
-      "date": "Ngày «dd/mm/yyyy»",
-      "agenda": [
-        {"num": "01", "text": "«Mảng việc 1»"},
-        {"num": "02", "text": "«Mảng việc 2»"},
-        {"num": "03", "text": "«Thông điệp, kiến nghị»", "gap": true}
-      ]
-    },
-    {
-      "kicker": "01 / 02 · «MẢNG VIỆC 1»",
-      "title": "«Tiêu đề nói kết quả, vd: Hoàn thành rà soát 450 VM»",
-      "lead": "«Một câu tóm tắt kết quả chính của mảng việc»",
-      "rows": [
-        {"cols": [1, 1, 1], "blocks": [
-          {"type": "stat", "value": "«số 1»", "label": "«ý nghĩa số 1»"},
-          {"type": "stat", "value": "«số 2»", "label": "«ý nghĩa số 2»", "tone": "primary"},
-          {"type": "stat", "value": "«số 3»", "label": "«ý nghĩa số 3»", "tone": "warn"}
-        ]},
-        {"cols": [1, 1], "grow": true, "blocks": [
-          {"type": "panel", "title": "Kết quả thực hiện", "tone": "light", "bullets": ["«kết quả 1»", "«kết quả 2»"]},
-          {"type": "panel", "title": "Khó khăn, vướng mắc", "tone": "warn", "bullets": ["«vướng mắc 1»", "«vướng mắc 2»"]}
-        ]}
-      ],
-      "next": "«Việc làm tiếp theo»"
-    },
-    {
-      "dark": true,
-      "kicker": "THÔNG ĐIỆP TỔNG HỢP TRÌNH LÃNH ĐẠO",
-      "title": "Kết quả chính và kiến nghị",
-      "rows": [
-        {"cols": [1, 1, 1], "blocks": [
-          {"type": "stat", "value": "«số»", "label": "«ý nghĩa»"},
-          {"type": "stat", "value": "«số»", "label": "«ý nghĩa»", "tone": "accent"},
-          {"type": "stat", "value": "«số»", "label": "«kiến nghị chính»", "tone": "highlight"}
-        ]},
-        {"cols": [1, 1], "blocks": [
-          {"type": "text", "title": "Đã đạt được", "tone": "accent", "text": "«2-3 câu kết quả chính, có số liệu»"},
-          {"type": "text", "title": "Kiến nghị", "tone": "highlight", "text": "«ai – làm gì – khi nào»"}
-        ]}
-      ]
-    }
+    {"mau": "bia", "tieuDe": "", "phu": "", "dong": ""}
   ]
 }

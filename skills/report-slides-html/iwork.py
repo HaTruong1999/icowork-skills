@@ -92,8 +92,8 @@ def resume(work):
         quality_task(work,command('finish',work));return
     plan = work / 'plan.json'
     if not plan.exists():
-        print(f'ĐỌC: {work / "content.md"}\nĐỌC: {work / "facts.md"}\nĐỌC: {ROOT / "references/writing_guide.md"}')
-        print(f'GHI {plan}: {{"meta":{{"title":"…","author":"…","date":"…","computed":[]}},"outline":["tên từng slide"]}}. Số slide theo nguồn, không giới hạn ý.')
+        print(f'ĐỌC: {work / "content.md"}\nĐỌC: {work / "facts.md"}\nĐỌC: {ROOT / "references/huong-dan-k7.md"} (mục 4-9: cấu trúc, 12 mẫu)')
+        print(f'GHI {plan}: {{"meta":{{"ten":{{"vi":"…","en":"…"}},"ban":"Bản 1 · dd/mm/yyyy","computed":[]}},"outline":["tên từng slide"]}}. Số slide theo nguồn, không giới hạn ý.')
         print('NEXT: lưu plan.json rồi chạy: ' + command('resume', work))
         return
     outline = load(plan).get('outline', [])
@@ -104,11 +104,12 @@ def resume(work):
     for index, title in enumerate(outline, 1):
         path = work / 'parts' / f'{index:02d}.json'
         if not path.exists():
-            print(f'GHI MỘT SLIDE NGAY: {path}\nTiêu đề dự kiến: {title}\nCấu trúc: một object slide theo references/schema.md; không bọc trong slides[].')
+            print(f'GHI MỘT SLIDE NGAY: {path}\nTiêu đề dự kiến: {title}\nCấu trúc: một object slide theo 1 trong 12 mẫu của references/huong-dan-k7.md mục 5 (trường "mau" bắt buộc); không bọc trong slides[].')
             print('Không viết lại các slide trước. Lưu xong gọi tiếp: ' + command('resume', work))
             return
         data = load(path)
-        if not isinstance(data, dict) or not data.get('title'): raise SystemExit(f'LỖI: {path} phải là object slide có title.')
+        if not isinstance(data, dict) or not data.get('mau') or not data.get('tieuDe'):
+            raise SystemExit(f'LỖI: {path} phải là object slide có "mau" (tên 1 trong 12 mẫu) và "tieuDe".')
     print('ĐÃ ĐỦ PHẦN. NEXT: ' + command('build', work))
 
 def start(a):
@@ -159,6 +160,8 @@ def build(a):
         if item not in computed: computed.append(item)
     meta['computed'] = computed
     meta.setdefault('date', state['date']);meta.setdefault('output_name', work.name)
+    meta.setdefault('id', re.sub(r'[^a-z0-9-]+', '-', work.name.lower()))
+    if not meta.get('ten'): raise SystemExit('LỖI: plan.json thiếu meta.ten (vd {"vi":"…","en":"…"}) - viết lại plan.json trước khi build.')
     meta['output_name'] = re.sub(r'[^\w.-]+', '_', meta['output_name'], flags=re.UNICODE)
     meta['sources'] = [Path(f).name for f in state['files']]
     rep = {'meta': meta, 'slides': slides}

@@ -21,9 +21,12 @@ for directory in ('/opt/homebrew/bin', '/usr/local/bin'):
     if Path(directory).is_dir() and directory not in os.environ.get('PATH', '').split(os.pathsep):
         os.environ['PATH'] = os.environ.get('PATH', '') + os.pathsep + directory
 ENGINE = ROOT / 'scripts' / 'report.py'
+IVIEW_NOTICE = 'GỢI Ý: File HTML có thể được chia sẻ bằng link thông qua iView trên Go Connect.'
 
 def command(*args):
-    return shlex.join([sys.executable, str(ROOT / 'iwork.py'), *map(str, args)])
+    exe = 'python' if os.name == 'nt' else 'python3'
+    quote = lambda value: '"' + str(value).replace('"', '\\"') + '"'
+    return ' '.join([exe, quote(ROOT / 'iwork.py'), *[quote(x) for x in args]])
 
 def run(*args):
     result = subprocess.run([sys.executable, str(ENGINE), *map(str, args)], capture_output=True, text=True)
@@ -64,23 +67,86 @@ def doctor(files):
     if '.xlsx' in extensions: required['openpyxl'] = 'openpyxl'
     if '.docx' in extensions: required['docx'] = 'python-docx'
     if '.pptx' in extensions: required['pptx'] = 'python-pptx'
-    if '.pdf' in extensions and not (shutil.which('pdftotext') and shutil.which('pdftoppm')):
+    poppler = bool(shutil.which('pdftotext') and shutil.which('pdftoppm'))
+    fitz_ok = importlib.util.find_spec('fitz') is not None
+    if '.pdf' in extensions and not poppler:
         required['fitz'] = 'PyMuPDF'
     missing = [package for module, package in required.items() if importlib.util.find_spec(module) is None]
     if missing:
-        raise SystemExit('THIẾU THƯ VIỆN. Chạy: ' + shlex.join([sys.executable, '-m', 'pip', 'install', *missing]))
-    if '.pdf' in extensions and not all(shutil.which(x) for x in ('pdftotext', 'pdftoppm', 'pdftocairo')):
-        raise SystemExit('THIẾU POPPLER để đọc chính xác bảng PDF. Cài Poppler vào PATH rồi chạy lại. Không bỏ qua bước đọc bảng.')
+        exe = 'python' if os.name == 'nt' else 'python3'
+        raise SystemExit('THIẾU THƯ VIỆN. Chạy: ' + ' '.join([exe, '-m', 'pip', 'install', *missing]))
+    if '.pdf' in extensions and not (poppler or fitz_ok):
+        raise SystemExit('THIẾU BỘ ĐỌC PDF. Cài PyMuPDF hoặc Poppler rồi chạy lại.')
+
+def story_errors(slides, plan, content):
+    errors = []
+    chapters = [(i + 1, str(s.get('so', '')).strip()) for i, s in enumerate(slides) if s.get('mau') == 'chuong']
+    if len(chapters) == 1:
+        errors.append('Chỉ có một slide chương; phải bỏ hoặc tạo đủ các chương nhất quán.')
+    if chapters:
+        numbers = []
+        for _, value in chapters:
+            match = re.fullmatch(r'0*(\d+)', value)
+            if not match:
+                errors.append('Số chương phải là số nguyên liên tục.'); break
+            numbers.append(int(match.group(1)))
+        if numbers and numbers != list(range(1, len(numbers) + 1)):
+            errors.append('Số chương không liên tục từ 01.')
+    else:
+        numbered = [s for s in slides if s.get('mau') not in ('bia', 'cam-on')]
+        actual = [str(s.get('soMuc', '')).strip() for s in numbered]
+        expected = [str(i) for i in range(1, len(numbered) + 1)]
+        if actual != expected:
+            errors.append('Deck không có trang chương phải dùng soMuc phẳng liên tục 1, 2, 3…; không dùng dauMuc để sinh 1.1/2.1.')
+    for item in plan.get('meta', {}).get('computed', []):
+        formula = str(item.get('formula', '')) if isinstance(item, dict) else ''
+        if not re.search(r'\d\s*[+\-*/]\s*\d', formula) or re.search(r'\bsource\b|nguồn|content\.md', formula, re.I):
+            errors.append('meta.computed chỉ nhận phép tính số học; không dùng trích dẫn nguồn để hợp thức hoá số.')
+            break
+    slide_text = json.dumps(slides, ensure_ascii=False)
+    if re.search(r'tích hợp[^\n]{0,90}\d+[\s.]*vùng còn lại', slide_text, re.I) and not re.search(r'tích hợp[^\n]{0,90}phiếu sự cố', slide_text, re.I):
+        errors.append('Không ghép mục tiêu tích hợp thiết bị với "vùng còn lại" của kết nối phiếu sự cố; tách thành hai công việc.')
+    for claim in re.finditer(r'hoàn thành\s+(vùng\s*\d+\s*(?:,|và)\s*vùng\s*\d+)', slide_text, re.I):
+        if claim.group(1).lower() not in content.lower():
+            errors.append('Không được đổi "các vùng còn lại" thành tên vùng cụ thể khi nguồn không nêu.')
+            break
+    compact_content = re.sub(r'\s+', ' ', content.lower())
+    for claim in re.finditer(r'hoàn thành\s+tích hợp[^"}]{0,100}vùng[^"}]{0,50}', slide_text, re.I):
+        normalized = re.sub(r'\s+', ' ', claim.group(0).lower()).strip(' .,;')
+        if normalized not in compact_content:
+            errors.append('Không khẳng định hoàn thành tích hợp cho các vùng cụ thể khi nguồn chỉ nêu mục tiêu 2.000 thiết bị.')
+            break
+    return errors
 
 def authored_hash(work):
     import hashlib
     paths=[work/'plan.json',*sorted((work/'parts').glob('*.json'))]
     return hashlib.sha256(''.join(str(p.relative_to(work))+':'+sha(p) for p in paths if p.exists()).encode()).hexdigest()
 
+def part_inventory_errors(work, outline):
+    """Reject ambiguous or out-of-plan part names before the model continues."""
+    parts = work / 'parts'
+    expected = {f'{i:02d}.json' for i in range(1, len(outline) + 1)}
+    actual = {p.name for p in parts.glob('*.json')}
+    extra = sorted(actual - expected)
+    errors = []
+    if extra:
+        errors.append('Có parts ngoài outline: ' + ', '.join(extra) + '. Chỉ dùng tên tuần tự 01.json, 02.json…; sửa plan hoặc đánh lại số, không tạo 02b.json.')
+    seen = {}
+    for name in sorted(actual & expected):
+        data = load(parts / name)
+        signature = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        if signature in seen:
+            errors.append(f'{name} trùng hoàn toàn với {seen[signature]}. Sửa outline/nội dung và đánh lại số trước khi tiếp tục.')
+        else:
+            seen[signature] = name
+    return errors
+
 def resume(work):
     state = load(work / 'iwork-state.json')
     if state.get('phase')=='complete':
-        print('HOÀN TẤT. '+str(work/'delivery.json'));return
+        print('HOÀN TẤT. '+str(work/'delivery.json'))
+        print(IVIEW_NOTICE);return
     (work / 'STATUS.md').write_text(
         '# iWork — đang soạn báo cáo\n'
         'Entry point duy nhất: iwork.py ở gốc skill, không phải scripts/report.py.\n'
@@ -101,16 +167,29 @@ def resume(work):
         raise SystemExit('LỖI: plan.json cần outline là danh sách tiêu đề slide không rỗng.')
     if (work / 'parts' / '00.json').exists():
         raise SystemExit('LỖI: parts bắt đầu từ 01.json (bìa), không phải 00.json. Đánh lại số các phần theo outline; không bỏ mất bìa.')
+    inventory_errors = part_inventory_errors(work, outline)
+    if inventory_errors:
+        raise SystemExit('LỖI CẤU TRÚC PARTS:\n- ' + '\n- '.join(inventory_errors))
+    missing = []
     for index, title in enumerate(outline, 1):
         path = work / 'parts' / f'{index:02d}.json'
         if not path.exists():
-            print(f'GHI MỘT SLIDE NGAY: {path}\nTiêu đề dự kiến: {title}\nCấu trúc: một object slide theo 1 trong 12 mẫu của references/huong-dan-k7.md mục 5 (trường "mau" bắt buộc); không bọc trong slides[].')
-            print('Không viết lại các slide trước. Lưu xong gọi tiếp: ' + command('resume', work))
-            return
+            missing.append((path, title))
+            continue
         data = load(path)
         if not isinstance(data, dict) or not data.get('mau') or not data.get('tieuDe'):
             raise SystemExit(f'LỖI: {path} phải là object slide có "mau" (tên 1 trong 12 mẫu) và "tieuDe".')
+    if missing:
+        batch = missing[:3]
+        print(f'GHI NGAY LÔ {len(batch)} SLIDE SAU:')
+        for path, title in batch:
+            print(f'- {path}\n  Tiêu đề dự kiến: {title}')
+        print('Mỗi file là một object theo 1 trong 12 mẫu của references/huong-dan-k7.md mục 5, có "mau" và "tieuDe"; không bọc trong slides[].')
+        print('Ghi xong CẢ LÔ rồi chạy NGAY TRONG CÙNG LƯỢT: ' + command('resume', work))
+        print('KHÔNG DỪNG ĐỂ TRẢ LỜI NGƯỜI DÙNG khi phase chưa complete.')
+        return
     print('ĐÃ ĐỦ PHẦN. NEXT: ' + command('build', work))
+    print('Chạy build NGAY TRONG CÙNG LƯỢT; không dừng để báo tiến độ.')
 
 def start(a):
     work = workpath(a.work)
@@ -144,16 +223,24 @@ def start(a):
 
 def build(a):
     work = workpath(a.work); state = load(work / 'iwork-state.json'); plan = load(work / 'plan.json')
+    attempts = len(list((work / 'build-history').glob('*.log'))) + (1 if (work / 'build.log').exists() else 0)
+    if attempts >= 3 and state.get('phase') != 'quality':
+        raise SystemExit('DỪNG: đã có 3 lần build chưa đạt. Báo bản nháp và build.log; không tự thử tiếp hoặc tuyên bố hoàn tất.')
     if (work / 'parts' / '00.json').exists():
         raise SystemExit('LỖI: parts bắt đầu từ 01.json (bìa). Sửa số phần theo outline trước khi build; không bỏ mất bìa 00.json.')
     if not (work / 'content.md').is_file() or not (work / 'facts.md').is_file():
         raise SystemExit('Thiếu content.md/facts.md; không được build khi mất dữ liệu nguồn.')
     outline = plan.get('outline', [])
     if not outline: raise SystemExit('Thiếu outline trong plan.json')
-    expected={f'{i:02d}.json' for i in range(1,len(outline)+1)}
-    extra={p.name for p in (work/'parts').glob('*.json')}-expected
-    if extra:raise SystemExit('Có parts ngoài outline sẽ bị bỏ mất: '+', '.join(sorted(extra))+'. Bổ sung outline đúng nội dung; không âm thầm bỏ slide.')
+    inventory_errors = part_inventory_errors(work, outline)
+    if inventory_errors: raise SystemExit('LỖI CẤU TRÚC PARTS:\n- ' + '\n- '.join(inventory_errors))
+    missing = [f'{i:02d}.json' for i in range(1, len(outline)+1) if not (work/'parts'/f'{i:02d}.json').is_file()]
+    if missing: raise SystemExit('Thiếu parts theo outline: ' + ', '.join(missing) + '. Chạy resume và hoàn thành toàn bộ lô trước khi build.')
     slides = [load(work / 'parts' / f'{i:02d}.json') for i in range(1, len(outline)+1)]
+    content_text = (work / 'content.md').read_text(encoding='utf-8') if (work / 'content.md').exists() else ''
+    narrative_errors = story_errors(slides, plan, content_text)
+    if narrative_errors:
+        raise SystemExit('LỖI CẤU TRÚC BÁO CÁO:\n- ' + '\n- '.join(narrative_errors))
     meta = dict(plan.get('meta', {}))
     computed = fact_computations(work)
     for item in meta.get('computed', []):
@@ -190,7 +277,7 @@ def build(a):
     for i,line in enumerate(lines):
         if line.startswith(('[1]', '[3]', '[3b]', '[3d]', '[3e]', '[3f]', '[3g]', '[4]', '[5]', 'KẾT QUẢ:')):
             print(line)
-            if 'LỖI' in line: print('\n'.join(lines[i+1:i+9]))
+            if 'LỖI' in line: print('\n'.join(lines[i+1:i+36]))
     if result.returncode:
         print(f'Chi tiết: {work / "build.log"}. Sửa đúng parts/NN.json hoặc plan.json rồi chạy: {command("build", work)}')
         raise SystemExit(result.returncode)
@@ -229,6 +316,7 @@ def finish(a):
     keep = {p.name for p in outputs} | {'iwork-state.json', 'delivery.json'} | ({docx.name} if docx.exists() else set())
     tidy_workspace(work, keep)
     print('HOÀN TẤT: '+str(work/'delivery.json'))
+    print(IVIEW_NOTICE)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__); sub=p.add_subparsers(dest='action', required=True)

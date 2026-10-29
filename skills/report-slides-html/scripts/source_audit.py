@@ -39,6 +39,23 @@ def check_audit(work,audit):
     for key in CHECKS:
         c=checks.get(key,{})
         if c.get('pass') is not True or len(str(c.get('reason','')).strip())<20:errors.append('Cần kiểm có lý do cụ thể: '+key)
+    visual=audit.get('visual_review',{})
+    sheets=sorted((work/'_preview'/'sheets').glob('sheet-*.png'))
+    reviewed=visual.get('reviewed_sheets',[]) if isinstance(visual,dict) else []
+    expected=[p.name for p in sheets]
+    method=visual.get('method') if isinstance(visual,dict) else None
+    if method=='images':
+        if reviewed!=expected:
+            errors.append('Chưa ghi đủ tên các sheet preview đã xem.')
+    elif method=='geometry':
+        findings=str(visual.get('findings','')).strip()
+        uncertainties=audit.get('uncertainties',[])
+        if len(findings)<20:
+            errors.append('Kiểm tra geometry cần ghi bằng chứng layout cụ thể trong visual_review.findings.')
+        if not isinstance(uncertainties,list) or not any(str(x).strip() for x in uncertainties):
+            errors.append('Không đọc được ảnh thì phải ghi hạn chế visual QA trong uncertainties.')
+    else:
+        errors.append('visual_review.method phải là "images" hoặc "geometry".')
     covered={c.get('id'):c for c in audit.get('coverage',[]) if isinstance(c,dict)}
     for req in requirements(work):
         c=covered.get(req['id'],{});nums=c.get('slides',[])
@@ -54,7 +71,7 @@ def check_audit(work,audit):
 
 def task(work,command):
     req=requirements(work);(work/'coverage-required.json').write_text(json.dumps(req,ensure_ascii=False,indent=2))
-    schema={'report_sha256':sha(work/'report.json'),'checks':[{'id':key,'pass':None,'reason':'Căn cứ cụ thể từ nguồn và bản cuối; nếu chưa đúng phải sửa parts/plan rồi build lại.'} for key in CHECKS],'coverage':[{'id':r['id'],'slides':[],'quote':'Đoạn nguyên văn có trong slide cuối, không phải nguyên văn nguồn'} for r in req],'uncertainties':[]}
+    schema={'report_sha256':sha(work/'report.json'),'checks':[{'id':key,'pass':None,'reason':'Căn cứ cụ thể từ nguồn và bản cuối; nếu chưa đúng phải sửa parts/plan rồi build lại.'} for key in CHECKS],'visual_review':{'method':'images','reviewed_sheets':[],'findings':'Nếu xem được ảnh: ghi lỗi quan sát và cách sửa. Nếu không đọc được ảnh: đổi method thành geometry và ghi kết quả kiểm tra log/kích thước/tràn.'},'coverage':[{'id':r['id'],'slides':[],'quote':'Đoạn nguyên văn có trong slide cuối, không phải nguyên văn nguồn'} for r in req],'uncertainties':[]}
     (work/'quality-audit.template.json').write_text(json.dumps(schema,ensure_ascii=False,indent=2))
-    (work/'TASK.md').write_text('# Kiểm chất lượng trước giao\nĐọc report.json cuối, nguồn/facts và coverage-required.json; xem toàn bộ ảnh _preview/sheets nếu công cụ của phiên hỗ trợ. Nếu không đọc được ảnh, ghi rõ trong uncertainties và phương pháp kiểm layout bằng log/geometry; không nhận đã xem ảnh. Viết quality-audit.json theo quality-audit.template.json.\nKiểm đếm dòng cha/tổng/chi tiết/nghi trùng; hợp/giao trạng thái; số tổng có phạm vi ở mọi lần lặp; so sánh theo đơn vị phải rõ đầy đủ hay chọn mục. Giữ hạn riêng, đơn vị đo, phân biệt khoản tiền nguồn ghi với thiếu vốn đã xác nhận và đề xuất của reviewer. Không bịa tác giả, nguyên nhân chậm, ngân sách hoặc mức ưu tiên tuyệt đối. Không lặp một KPI hai lần trên cùng slide.\nNếu thiếu/sai thì sửa parts/plan, build lại rồi audit đúng hash mới. Không tick qua khi thiếu bằng chứng.\nNEXT: '+command+'\n')
+    (work/'TASK.md').write_text('# Kiểm chất lượng trước giao\nĐọc report.json cuối, nguồn/facts và coverage-required.json. Nếu phiên đọc được ảnh, xem TOÀN BỘ _preview/sheets và ghi đúng tên file vào visual_review.reviewed_sheets với method="images". Nếu phiên không đọc được ảnh, dùng method="geometry", kiểm tra build.log/geometry/kích thước đầu ra, ghi bằng chứng cụ thể vào findings và ghi hạn chế vào uncertainties; sau đó vẫn chạy finish. Không được nhận đã xem ảnh khi chỉ dùng geometry. Viết quality-audit.json theo quality-audit.template.json.\nKiểm đếm dòng cha/tổng/chi tiết/nghi trùng; hợp/giao trạng thái; số tổng có phạm vi ở mọi lần lặp; so sánh theo đơn vị phải rõ đầy đủ hay chọn mục. Giữ hạn riêng, đơn vị đo, phân biệt khoản tiền nguồn ghi với thiếu vốn đã xác nhận và đề xuất của reviewer. Không bịa tác giả, nguyên nhân chậm, ngân sách hoặc mức ưu tiên tuyệt đối. Không lặp một KPI hai lần trên cùng slide.\nNếu thiếu/sai thì sửa parts/plan, build lại rồi audit đúng hash mới. Không tick qua khi thiếu bằng chứng.\nNEXT: '+command+'\n')
     print('BUILD ĐẠT; CHƯA GIAO. Đọc '+str(work/'TASK.md')+'; ghi quality-audit.json rồi chạy: '+command)

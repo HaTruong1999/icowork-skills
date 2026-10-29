@@ -28,11 +28,14 @@ sys.path.insert(0, str(HERE))
 
 MAX_ATTEMPTS = 3  # số lần build lỗi số liệu trước khi chuyển thành cảnh báo
 
+def display_python():
+    return "python" if platform.system() == "Windows" else "python3"
+
 
 def write_status(work, done, result, nxt):
     """WORK/STATUS.md: đường dẫn tuyệt đối + bước vừa xong + việc tiếp theo (đọc lại khi mất ngữ cảnh)."""
     from datetime import datetime
-    r = f"{sys.executable} {HERE / 'report.py'}"
+    r = f'{display_python()} "{HERE / "report.py"}"'
     files = ", ".join(p.name for p in sorted(Path(work).glob("*")) if p.suffix in (".md", ".json", ".html", ".pdf", ".docx"))
     Path(work, "STATUS.md").write_text(
         f"# Trạng thái báo cáo – cập nhật {datetime.now():%d/%m/%Y %H:%M}\n\n"
@@ -77,7 +80,7 @@ def cmd_env(_):
     out(f"  [{'OK' if find_soffice() else 'không có'}] LibreOffice  (tùy chọn: ảnh trang cho pptx/docx không kèm PDF)")
     out()
     if missing:
-        out(f"NEXT: chạy `{sys.executable} -m pip install {' '.join(missing)}` rồi chạy lại `report.py env`.")
+        out(f"NEXT: chạy `{display_python()} -m pip install {' '.join(missing)}` rồi chạy lại `report.py env`.")
     elif not b:
         out("NEXT: cài Google Chrome (hoặc Edge), hoặc đặt biến môi trường REPORT_BROWSER=<đường dẫn trình duyệt>. "
             "Tạm thời vẫn dựng được HTML bằng `build --no-pdf`.")
@@ -241,7 +244,10 @@ def iter_texts(node, slide=None, key=None):
         yield slide, re.sub(r"^\s*\d+[a-z]?\s*[·|:–—-]\s*", "", node) if key == "dauMuc" else node
 
 
-UNIT_RE = re.compile(r"\s?(%|tỷ|triệu|nghìn|ngàn|TB|GB|Gbps|Mbps)(?![\wÀ-ỹ])", re.IGNORECASE)
+# Nguồn thường viết "48,5 – Tỷ đồng" trong khi slide tách số và
+# nhãn thành "48,5" + "tỷ đồng". Dấu phân cách không làm mất
+# bằng chứng đơn vị.
+UNIT_RE = re.compile(r"\s*(?:[–—-]\s*)?(%|tỷ|triệu|nghìn|ngàn|TB|GB|Gbps|Mbps)(?![\wÀ-ỹ])", re.IGNORECASE)
 SECTION_NO = re.compile(r"^\s*\d{1,2}\s*/\s*\d{1,2}")  # "01 / 04" ở đầu kicker là số thứ tự phần
 
 
@@ -266,6 +272,19 @@ def numeric_value(token):
     return Decimal(token.replace(",", "."))
 
 
+def numeric_candidates(token):
+    """Giữ quy ước Việt, nhưng chấp nhận dấu phẩy nghìn trong bản Anh."""
+    from decimal import Decimal, InvalidOperation
+    result = set()
+    try:
+        result.add(numeric_value(token))
+    except InvalidOperation:
+        pass
+    if re.fullmatch(r"\d{1,3}(?:,\d{3})+", token):
+        result.add(Decimal(token.replace(',', '')))
+    return result
+
+
 def percent_matches(value, shown):
     """Accept only rounding to the precision explicitly displayed (half up)."""
     from decimal import Decimal, ROUND_HALF_UP
@@ -288,11 +307,14 @@ def check_numbers(rep, content):
     units = {}
     for text in [src] + computed:
         for m in re.finditer(NUMBER_PATTERN, text):
-            value = numeric_value(m.group())
-            values.add(value)
+            candidates = numeric_candidates(m.group())
+            if not candidates:
+                continue
+            value = next(iter(candidates))
+            values.update(candidates)
             unit = UNIT_RE.match(text, m.end())
             if unit:
-                units.setdefault(unit.group(1).lower(), set()).add(value)
+                units.setdefault(unit.group(1).lower(), set()).update(candidates)
     ratio_re = re.compile(r"(?<![\d/.,])(" + NUMBER_PATTERN + r")\s*/\s*(" + NUMBER_PATTERN + r")(?![\d/.,])")
     source_ratios = {(numeric_value(m[1]), numeric_value(m[2])) for m in ratio_re.finditer(src)}
     missing = {}
@@ -311,7 +333,10 @@ def check_numbers(rep, content):
                 if percent_matches(a / b * Decimal(100), pair[4]):
                     linked[pair.start(4)] = True
             for m in re.finditer(NUMBER_PATTERN, text):
-                tok = m.group(); value = numeric_value(tok)
+                tok = m.group(); candidates = numeric_candidates(tok)
+                if not candidates:
+                    continue
+                value = next(iter(candidates))
                 u = UNIT_RE.match(text, m.end())
                 if len(tok) < 2 and not u:
                     continue
@@ -320,13 +345,13 @@ def check_numbers(rep, content):
                 if u:
                     unit = u.group(1).lower()
                     known = units.get(unit, set())
-                    valid = value in known
+                    valid = any(candidate in known for candidate in candidates)
                     if unit == "%":
                         valid = valid or m.start() in linked or any(percent_matches(v, tok) for v in known)
                     if not valid:
                         shown = tok + ("" if unit == "%" else " ") + u.group(1)
                         missing.setdefault(shown, set()).add(i)
-                elif value not in values:
+                elif not any(candidate in values for candidate in candidates):
                     missing.setdefault(tok, set()).add(i)
     return missing
 

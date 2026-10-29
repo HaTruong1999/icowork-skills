@@ -59,7 +59,8 @@ Hai ví dụ hoàn chỉnh: `vi-du/gioi-thieu-vnpt-ai.json` (giới thiệu côn
 |---|---|---|---|
 | `mau` | có | | Tên mẫu ở mục 5 |
 | `nhan` | nên có | 28 | Tên ngắn ở mục lục bên trái, ví dụ "Kết quả chính" |
-| `dauMuc` | có (trừ bìa, chương, cảm ơn) | 32 | `"4 · Kết quả trên Qualcomm"`. **Bắt đầu bằng số phần**: số mục 4.1, 4.2… tự đánh theo số này |
+| `dauMuc` | có (trừ bìa, chương, cảm ơn) | 32 | `"4 · Kết quả trên Qualcomm"`. **Bắt đầu bằng số phần**: số mục 4.1, 4.2… tự đánh theo số này. Chỉ dùng cách này khi deck có trang `mau:"chuong"` tương ứng. |
+| `soMuc` | tuỳ chọn | 8 | Ghi đè số trong vòng tròn. Với deck không có trang chương, bắt buộc dùng số phẳng liên tục `"1"`, `"2"`, `"3"`… |
 | `tieuDe` | có | 64 | **Một câu kết luận**, không phải tên chủ đề. "Fall Detection nhanh gấp *3 lần* GPU ở 30 luồng", không phải "Kết quả Fall Detection" |
 | `phu` | không | 150 | Một câu giải thích dưới tiêu đề |
 | `ketLuan` | không | 100 | Dải xanh cuối slide: điều người xem cần nhớ |

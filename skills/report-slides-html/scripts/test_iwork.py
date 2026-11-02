@@ -266,7 +266,7 @@ class AutoFix(unittest.TestCase):
         card = {'mau': 'the', 'dauMuc': 'A', 'soMuc': '1', 'tieuDe': 'x', 'the': [
             {'icon': 'giam', 't': '75,3%', 'nhan': 'Cảnh báo trùng giảm', 'd': 'Từ 85.000 xuống 21.000'},
             {'icon': 'cai-dat', 't': '1.150', 'nhan': 'Luật cảnh báo chuẩn hóa', 'd': ''}]}
-        work = self.make([{'mau': 'bia', 'tieuDe': 'x'}, card])
+        work = self.make([{'mau': 'bia', 'the': 'x', 'tieuDe': 'x'}, card])
         fixes = m.autofix_parts(work, ['a', 'b'], {'giam', 'cai-dat'})
         got = json.loads((work / 'parts' / '02.json').read_text(encoding='utf-8'))['the']
         self.assertEqual(got[0]['d'], 'Cảnh báo trùng giảm: Từ 85.000 xuống 21.000')
@@ -345,18 +345,26 @@ class AutoFix(unittest.TestCase):
         self.assertIn('metadata', note)
 
     def test_speaker_notes_are_composed_only_from_slide_text(self):
-        """Người dùng báo HTML mất lời thoại (tôi từng tắt để nhanh). Driver tự tổng hợp từ chữ trên slide: không thêm thông tin ngoài slide."""
+        """Người dùng báo HTML mất lời thoại, rồi cần đầy đủ chi tiết hơn: đủ từng ý, con số, nguồn, kết luận; chỉ dùng chữ trên slide."""
         m = self.drv()
-        slides = [{'mau': 'bia', 'tieuDe': 'Báo cáo *War room*', 'phu': 'Rà soát an ninh'},
-                  {'mau': 'so-lieu', 'tieuDe': 'Tổng quan', 'so': [{'so': '7.949', 'nhan': 'VM toàn Tập đoàn'}], 'ketLuan': 'Đã rà soát xong'},
-                  {'mau': 'bang', 'tieuDe': 'Tiến độ', 'cot': ['Đơn vị', 'Hạn'], 'hang': [['VNPT Net', '24/10'], ['VNPT AI', '30/10']]},
-                  {'mau': 'van-de', 'tieuDe': 'Sự cố', 'vanDe': {'t': 'Bị chiếm quyền', 'y': ['03 VCenter']}, 'giaiPhap': {'t': 'Khắc phục', 'y': ['Gỡ mã độc']}},
-                  {'mau': 'cam-on', 'tieuDe': 'Cảm ơn'}]
-        notes = [m.compose_loi_thoai(x) for x in slides]
-        self.assertIn('Kính chào', notes[0]); self.assertNotIn('*', notes[0])
-        self.assertIn('7.949 VM toàn Tập đoàn', notes[1]); self.assertIn('Kết luận: Đã rà soát xong.', notes[1])
-        self.assertIn('VNPT Net — 24/10', notes[2]); self.assertIn('Giải pháp: Khắc phục — Gỡ mã độc.', notes[3])
-        self.assertIn('cảm ơn', notes[4].lower()); self.assertTrue(all(len(n) <= 1500 for n in notes))
+        slides = [{'mau': 'bia', 'tieuDe': 'Báo cáo *War room*', 'phu': 'Rà soát an ninh', 'dong': 'VNPT IT, 24/10/2026'},
+                  {'mau': 'so-lieu', 'tieuDe': 'Tổng quan', 'phu': 'Toàn Tập đoàn', 'so': [{'so': '7.949', 'nhan': 'VM toàn Tập đoàn'}, {'so': '450', 'nhan': 'VM VNPT Net'}], 'ketLuan': 'Đã rà soát xong', 'nguon': 'Nguồn: báo cáo 24/10'},
+                  {'mau': 'bang', 'tieuDe': 'Tiến độ', 'cot': ['Đơn vị', 'Tổng VM', 'Hạn'], 'hang': [['VNPT Net', '496', '24/10'], ['VNPT AI', '464', '30/10']]},
+                  {'mau': 'van-de', 'tieuDe': 'Sự cố', 'vanDe': {'t': 'Bị chiếm quyền', 'y': ['03 VCenter', '02 ESXi'], 'so': '5', 'soNhan': 'máy chủ'}, 'giaiPhap': {'t': 'Khắc phục', 'y': ['Gỡ mã độc']}},
+                  {'mau': 'the', 'tieuDe': 'Ba ý', 'the': [{'t': 'An toàn', 'd': 'Kiểm soát truy cập'}, {'t': 'Sao lưu', 'd': 'Hằng ngày'}]},
+                  {'mau': 'lo-trinh', 'tieuDe': 'Lộ trình', 'buoc': [{'tg': '2026', 't': 'Khởi động', 'd': 'Chọn đối tác'}]},
+                  {'mau': 'cam-on', 'tieuDe': 'Cảm ơn', 'lienHe': [{'gt': 'www.vnpt.vn'}]}]
+        n = [m.compose_loi_thoai(x) for x in slides]
+        self.assertIn('Kính chào', n[0]); self.assertNotIn('*', n[0]); self.assertIn('VNPT IT, 24/10/2026', n[0])
+        self.assertIn('Thứ nhất, VM toàn Tập đoàn: 7.949.', n[1]); self.assertIn('Thứ 2, VM VNPT Net: 450.', n[1])
+        self.assertIn('Điều cần nhớ: Đã rà soát xong.', n[1]); self.assertIn('Nguồn số liệu: báo cáo 24/10.', n[1])
+        self.assertIn('VNPT Net — Tổng VM: 496; Hạn: 24/10.', n[2]); self.assertIn('VNPT AI — Tổng VM: 464; Hạn: 30/10.', n[2])
+        self.assertIn('- 03 VCenter.', n[3]); self.assertIn('Con số đáng chú ý: 5 máy chủ.', n[3]); self.assertIn('Về giải pháp: Khắc phục.', n[3])
+        self.assertIn('Thứ nhất, An toàn: Kiểm soát truy cập.', n[4]); self.assertIn('Bước 1 (2026): Khởi động — Chọn đối tác.', n[5])
+        self.assertIn('cảm ơn', n[6].lower()); self.assertIn('www.vnpt.vn', n[6])
+        self.assertTrue(all(len(t) <= 1500 for t in n)); self.assertIn('\n', n[1])
+        long = {'mau': 'the', 'tieuDe': 'Dài', 'ketLuan': 'Kết luận quan trọng', 'nguon': 'Nguồn: x', 'the': [{'t': f'Ý {k}', 'd': 'mô tả khá dài ' * 8} for k in range(1, 7)]}
+        t = m.compose_loi_thoai(long); self.assertLessEqual(len(t), 1500); self.assertIn('Điều cần nhớ: Kết luận quan trọng.', t)   # quá dài thì bỏ nguồn trước, giữ kết luận
 
     def test_comma_separated_headers_are_not_one_invented_name(self):
         """Thật (War room, e2e): lời thoại "các cột: Data Center, Tổng Host, Đã Patch, Hạn" bị coi là một tên riêng không có trong nguồn."""
@@ -365,6 +373,75 @@ class AutoFix(unittest.TestCase):
         self.assertEqual(report.check_invented_names(rep, 'tong host da patch han tinh trang'), [])
         rep2 = {'slides': [{'mau': 'the', 'tieuDe': 'Nam Cần Thơ phụ trách'}]}
         self.assertTrue(report.check_invented_names(rep2, 'south'))
+
+    def _source_deck(self, parts):
+        """Nguồn 11 slide: ba slide ngăn phần (01, 02, 03) và nội dung dài; trả (work, slides báo cáo)."""
+        m = self.drv()
+        def body(n): return ' '.join(f'tukhoa{n}x{j}' for j in range(30)) + ' noi dung chi tiet cua slide nguon so ' + str(n)
+        src = ['# NGUỒN 1: x.pptx\n', '## Slide 1\nBáo cáo', '## Slide 2\nNỘI DUNG 01 Định hướng 02 Đồng hành 03 Hợp tác triển khai',
+               '## Slide 3\n01 ĐỊNH HƯỚNG CHIẾN LƯỢC', '## Slide 4\n' + body(4), '## Slide 5\n' + body(5), '## Slide 6\n02 ĐỒNG HÀNH THỰC HIỆN',
+               '## Slide 7\n' + body(7), '## Slide 8\n' + body(8), '## Slide 9\n03 HỢP TÁC TRIỂN KHAI', '## Slide 10\n' + body(10), '## Slide 11\nCảm ơn']
+        mk = lambda n, title: {'mau': 'so-lieu', 'tieuDe': title, 'so': [{'so': '1', 'nhan': ' '.join(f'tukhoa{n}x{j}' for j in range(12))}]}
+        slides = parts(mk)
+        work = self.make(slides)
+        if src: (work / 'content.md').write_text('\n'.join(src), encoding='utf-8')
+        write(work / 'plan.json', {'meta': {'ten': {'vi': 'x'}}, 'outline': [x['tieuDe'] for x in slides]})
+        return m, work
+
+    def test_chapter_position_follows_source_structure_even_when_titles_differ(self):
+        """Cấu trúc phần quyết định trước: slide ngăn phần của file nguồn ("03 HỢP TÁC…") chỉ ra chương bị bỏ sót nằm ở đâu, không cần tiêu đề trùng từ."""
+        toc = {'mau': 'muc-luc', 'tieuDe': 'Mục lục', 'muc': [{'t': 'Định hướng chiến lược', 'd': 'a'}, {'t': 'Đồng hành thực hiện', 'd': 'b'}, {'t': 'Hợp tác triển khai', 'd': 'c'}]}
+        m, work = self._source_deck(lambda mk: [{'mau': 'bia', 'tieuDe': 'x'}, toc, {'mau': 'chuong', 'so': '01', 'tieuDe': 'Định hướng chiến lược'}, mk(4, 'Hiện trạng'), mk(5, 'Mục tiêu'),
+                  {'mau': 'chuong', 'so': '02', 'tieuDe': 'Đồng hành thực hiện'}, mk(7, 'Kiến trúc'), mk(8, 'Ứng dụng'), mk(10, 'Lộ trình chi tiết'), {'mau': 'cam-on', 'tieuDe': 'Cảm ơn'}])
+        note = m.add_missing_chapters(work)
+        self.assertIn('Hợp tác triển khai', note)
+        got = [json.loads((work / 'parts' / f'{i:02d}.json').read_text(encoding='utf-8')) for i in range(1, 12)]
+        k = [x['mau'] for x in got].index('chuong', 6)
+        self.assertEqual(got[k]['so'], '03'); self.assertEqual(got[k + 1]['tieuDe'], 'Lộ trình chi tiết')
+        plan = json.loads((work / 'plan.json').read_text(encoding='utf-8'))
+        self.assertTrue(any('tự thêm' in x and 'theo cấu trúc file nguồn' in x for x in plan['meta']['canXacNhan']))
+
+    def test_no_source_structure_means_chapters_are_whatever_the_deck_has(self):
+        """Nguồn không có slide ngăn phần: driver không bịa thêm chương; mục lục không còn hứa phần không có (suy ra từ chương)."""
+        toc = {'mau': 'muc-luc', 'tieuDe': 'Mục lục', 'muc': [{'t': 'Định hướng', 'd': 'a'}, {'t': 'Đồng hành', 'd': 'b'}, {'t': 'Kế hoạch tài chính', 'd': 'c'}]}
+        m, work = self._source_deck(lambda mk: [{'mau': 'bia', 'tieuDe': 'x'}, toc, {'mau': 'chuong', 'so': '01', 'tieuDe': 'Định hướng'}, mk(4, 'Hiện trạng'),
+                  {'mau': 'chuong', 'so': '02', 'tieuDe': 'Đồng hành'}, mk(7, 'Kiến trúc'), mk(10, 'Lộ trình')])
+        (work / 'content.md').write_text('# NGUỒN 1: x.pptx\n## Slide 1\nBáo cáo không có slide ngăn phần', encoding='utf-8')
+        self.assertIsNone(m.add_missing_chapters(work))                                  # không có cấu trúc nguồn: không chèn gì
+        self.assertIn('bỏ slide mục lục', m.sync_toc_with_chapters(work))                # chỉ 2 chương: khung K7 không cho mục lục
+        plan = json.loads((work / 'plan.json').read_text(encoding='utf-8'))
+        self.assertEqual(len(plan['outline']), 6); self.assertNotIn('Mục lục', plan['outline'])
+        self.assertTrue(any('bỏ slide mục lục' in x.lower() or 'Đã bỏ slide mục lục' in x for x in plan['meta']['canXacNhan']))
+        self.assertIsNone(m.sync_toc_with_chapters(work))
+
+    def test_table_of_contents_is_derived_from_chapters(self):
+        m = self.drv()
+        toc = {'mau': 'muc-luc', 'tieuDe': 'Mục lục', 'muc': [{'t': 'Phần tự nghĩ ra A', 'd': 'a'}, {'t': 'Phần tự nghĩ ra B', 'd': 'b'}, {'t': 'Phần tự nghĩ ra C', 'd': 'c'}, {'t': 'Phần D', 'd': 'd'}]}
+        chap = lambda k, t: {'mau': 'chuong', 'so': str(k), 'tieuDe': t, 'phu': 'mô tả ' + t}
+        work = self.make([{'mau': 'bia', 'tieuDe': 'x', 'the': 'a'}, toc, chap(1, 'Hiện trạng'), {'mau': 'so-lieu', 'tieuDe': 'a', 'so': []}, chap(2, 'Giải pháp'), {'mau': 'so-lieu', 'tieuDe': 'b', 'so': []}, chap(3, 'Cam kết')])
+        m.autofix_parts(work, ['a'] * 7, set(), '', '')
+        got = json.loads((work / 'parts' / '02.json').read_text(encoding='utf-8'))
+        self.assertEqual([x['t'] for x in got['muc']], ['Hiện trạng', 'Giải pháp', 'Cam kết'])
+        short = {'mau': 'muc-luc', 'tieuDe': 'Mục lục', 'muc': [{'t': 'Hiện trạng gọn', 'd': 'a'}, {'t': 'Giải pháp', 'd': 'b'}, {'t': 'Cam kết VNPT', 'd': 'c'}]}   # viết gọn nhưng đúng phần: giữ chữ của model
+        work2 = self.make([{'mau': 'bia', 'tieuDe': 'x', 'the': 'a'}, short, chap(1, 'Hiện trạng chi tiết'), {'mau': 'so-lieu', 'tieuDe': 'a', 'so': []}, chap(2, 'Giải pháp trọng tâm'), {'mau': 'so-lieu', 'tieuDe': 'b', 'so': []}, chap(3, 'Cam kết của VNPT')])
+        m.autofix_parts(work2, ['a'] * 7, set(), '', '')
+        self.assertEqual(json.loads((work2 / 'parts' / '02.json').read_text(encoding='utf-8'))['muc'][0]['t'], 'Hiện trạng gọn')
+
+    def test_source_structure_finds_part_dividers_only(self):
+        m = self.drv()
+        work = self.make([])
+        (work / 'content.md').write_text('# NGUỒN 1: x\n## Slide 1\n01 PHẦN MỘT\n## Slide 2\n2.1 NHÓM CÁC NHIỆM VỤ\n## Slide 3\n03 PHẦN BA\n', encoding='utf-8')
+        _, div = m.source_structure(work)
+        self.assertEqual(div, {1: 1, 3: 3})                                  # "2.1 …" là mục con, không phải slide ngăn phần
+        (work / 'content.md').write_text('# NGUỒN 1: a\n## Slide 1\n01 A\n# NGUỒN 2: b\n## Slide 1\n01 B\n', encoding='utf-8')
+        self.assertEqual(m.source_structure(work), ({}, {}))                 # nhiều nguồn: không dùng
+
+    def test_cover_gets_label_instead_of_empty_oval(self):
+        m = self.drv()
+        work = self.make([{'mau': 'bia', 'tieuDe': 'Đề xuất đồng hành CĐS', 'phu': 'VNPT', 'dong': 'Hải Phòng, Tháng 10/2026'}])
+        m.autofix_parts(work, ['a'], set(), '', '')
+        self.assertEqual(json.loads((work / 'parts' / '01.json').read_text(encoding='utf-8'))['the'], 'Đề xuất · 2026')
+        self.assertEqual(m.cover_label({'tieuDe': 'Số liệu quý'}, ''), 'Báo cáo điều hành')
 
     def test_empty_slide_detector_names_first_blank_slide(self):
         import re
@@ -392,7 +469,7 @@ class AutoFix(unittest.TestCase):
 
     def test_unknown_icon_is_replaced_by_closest_meaning(self):
         m = self.drv(); icons = {'tiet-kiem', 'bieu-do', 'nguoi', 'canh-bao'}
-        work = self.make([{'mau': 'bia', 'tieuDe': 'x'}, {'mau': 'so-lieu', 'soMuc': '1', 'dauMuc': 'A', 'so': [{'so': '1', 'nhan': 'a', 'icon': 'tien-te'}, {'so': '2', 'nhan': 'b', 'icon': 'xyz-la'}]}])
+        work = self.make([{'mau': 'bia', 'the': 'x', 'tieuDe': 'x'}, {'mau': 'so-lieu', 'soMuc': '1', 'dauMuc': 'A', 'so': [{'so': '1', 'nhan': 'a', 'icon': 'tien-te'}, {'so': '2', 'nhan': 'b', 'icon': 'xyz-la'}]}])
         fixes = m.autofix_parts(work, ['a', 'b'], icons)
         got = json.loads((work / 'parts' / '02.json').read_text(encoding='utf-8'))['so']
         self.assertEqual(got[0]['icon'], 'tiet-kiem')

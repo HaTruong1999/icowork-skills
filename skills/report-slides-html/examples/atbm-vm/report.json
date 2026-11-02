@@ -1,177 +1,149 @@
 {
   "meta": {
-    "title": "Báo cáo tiến độ triển khai ATBM hệ thống VM",
+    "id": "atbm-vm",
+    "ten": {"vi": "Báo cáo tiến độ triển khai ATBM hệ thống VM", "en": "VM security rollout progress"},
+    "ban": "Bản 1 · 24/10/2026",
     "output_name": "Bao_cao_tien_do_ATBM_VM",
     "author": "VNPT Net",
     "date": "24/10/2026",
     "sources": ["Báo_cáo_tiến_độ_triển_khai_ATBM_hệ_thống_VM_v2.pdf"],
-    "computed": []
+    "computed": [],
+    "canXacNhan": ["23 VM (KPI, PTML, RPNEW, GSTT, CLM) mới phân loại sơ bộ theo tên, cần đơn vị chủ quản xác nhận."]
   },
   "slides": [
     {
-      "type": "cover",
-      "kicker": "VNPT NET · CHUYÊN ĐỀ 05",
-      "title": "Báo cáo tiến độ triển khai an toàn, bảo mật hệ thống VM",
-      "subtitle": "Hệ thống máy ảo (VM) do VNPT Net quản lý",
-      "date": "Ngày 24/10/2026",
-      "agenda": [
-        {"num": "01", "text": "Danh mục VM"},
-        {"num": "02", "text": "Đổi mật khẩu quản trị"},
-        {"num": "03", "text": "Sao lưu, khôi phục VM"},
-        {"num": "04", "text": "Giải pháp an toàn, bảo mật"},
-        {"num": "05", "text": "Thông điệp, kiến nghị", "gap": true}
-      ]
+      "mau": "bia",
+      "the": "VNPT Net · Chuyên đề 05",
+      "tieuDe": "Tiến độ an toàn, bảo mật *hệ thống VM*",
+      "phu": "Hệ thống máy ảo (VM) do VNPT Net quản lý: danh mục, mật khẩu quản trị, sao lưu và giải pháp ATBM.",
+      "dong": "VNPT Net · 24/10/2026"
     },
     {
-      "kicker": "01 / 04 · DANH MỤC VM",
-      "title": "Rà soát, chuẩn hóa danh mục VM",
-      "lead": "Hoàn thành rà soát; đã cập nhật, gửi danh mục đối soát cho VNPT-IT trên hệ thống quản lý dự án.",
-      "rows": [
-        {"cols": [1, 1, 1], "blocks": [
-          {"type": "stat", "value": "496", "label": "VM VNPT-IT bàn giao"},
-          {"type": "stat", "value": "450", "label": "VM do VNPT Net quản lý (90,73%)", "tone": "primary"},
-          {"type": "stat", "value": "46", "label": "VM ngoài phạm vi quản lý / đề xuất OFF", "tone": "warn"}
-        ]},
-        {"cols": [1.1, 0.9], "blocks": [
-          {"type": "split", "title": "Phân loại 450 VM theo loại hệ thống",
-           "parts": [
-             {"value": "171", "label": "Viễn thông", "weight": 171, "desc": "**38%** · CPE/ACS, Mentor RAN, NMS, chống spam, USSD, DNS"},
-             {"value": "279", "label": "Công nghệ thông tin", "weight": 279, "desc": "**62%** · OSS/ERP, CSDL (TT CĐS), báo cáo, web, giám sát"}
-           ],
-           "note": "Sơ bộ theo tên VM; 23 VM cần đơn vị chủ quản xác nhận."},
-          {"type": "numlist", "title": "Phân loại 46 VM còn lại", "items": [
-            {"value": "13", "text": "VM thuộc VNPT-IT"},
-            {"value": "02", "text": "VM thuộc VNPT Media"},
-            {"value": "31", "text": "VM không còn nhu cầu, đề xuất tắt (OFF)", "tone": "warn"}
-          ]}
-        ]}
+      "mau": "so-lieu",
+      "nhan": "Tóm tắt điều hành",
+      "dauMuc": "Tóm tắt",
+      "soMuc": "1",
+      "tieuDe": "Đổi mật khẩu, SIEM đạt *33,33%*; cần 300 TB backup",
+      "so": [
+        {"so": "33,33%", "nhan": "tiến độ đổi mật khẩu, kết nối SIEM (150/450 VM)", "icon": "bieu-do"},
+        {"so": "450", "nhan": "VM đã chuẩn hóa danh mục", "icon": "may-chu"},
+        {"so": "505", "nhan": "tài khoản quản trị đã thống kê", "icon": "bao-mat"},
+        {"so": "300 TB", "nhan": "dung lượng backup kiến nghị VNPT-IT cấp đủ", "icon": "du-lieu"}
       ],
-      "next": "Phối hợp VNPT-IT xác nhận danh mục và thực hiện tắt 31 VM sau khi hoàn tất đánh giá ảnh hưởng."
+      "ketLuan": "Vướng mắc chính: thiếu dung lượng lưu trữ cho snapshot site NTL.",
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026).",
+      "loiThoai": "Bốn con số chính của đợt báo cáo. Danh mục đã chuẩn hóa xong; đổi mật khẩu và kết nối SIEM đạt 150 trên 450 VM. Kiến nghị trọng tâm là VNPT-IT cấp đủ 300 TB dung lượng backup."
     },
     {
-      "kicker": "01 / 04 · DANH MỤC VM · CHI TIẾT",
-      "title": "Phân loại 450 VM: viễn thông và công nghệ thông tin",
-      "rows": [
-        {"cols": [1, 1], "grow": true, "blocks": [
-          {"type": "category", "title": "Hệ thống viễn thông", "sub": "38% · NTL 127 · 30 PHG 44", "total": "171", "tone": "primary",
-           "rows": [
-             {"label": "Quản lý CPE/ACS, DHCP băng rộng", "value": "48"},
-             {"label": "Phân tích vô tuyến RAN (Mentor)", "value": "30"},
-             {"label": "NMS giám sát thiết bị mạng", "value": "28"},
-             {"label": "Chống spam SMS/thoại", "value": "25"},
-             {"label": "DNS dịch vụ, DNS/DHCP Infoblox", "value": "8"},
-             {"label": "Hội nghị truyền hình", "value": "8"},
-             {"label": "Firewall, chống DDoS, RPKI, SD-WAN", "value": "7"},
-             {"label": "USSD Gateway", "value": "6"},
-             {"label": "MMSC, IMS, lưu trữ CDR OCS", "value": "6"},
-             {"label": "PTDL mạng lưới (TTDL), chặn lọc cuộc gọi", "value": "5"}
-           ]},
-          {"type": "category", "title": "Hệ thống công nghệ thông tin", "sub": "62% · NTL 261 · 30 PHG 18", "total": "279", "tone": "dark",
-           "rows": [
-             {"label": "Ứng dụng OSS/ERP, CSDL, nền tảng (TT CĐS)", "value": "200"},
-             {"label": "Báo cáo, phân tích, KPI, web, cổng thông tin", "value": "47"},
-             {"label": "Công cụ giám sát, máy trạm vận hành", "value": "11"},
-             {"label": "Hạ tầng dùng chung: FTP, backup, API", "value": "10"},
-             {"label": "Công cụ hỗ trợ vận hành: Interconnect, PCRF/HLR tools, OMC, SMS tracking", "value": "8"},
-             {"label": "Phát hiện trạm BTS giả", "value": "3"}
-           ]}
-        ]}
+      "mau": "so-lieu",
+      "nhan": "Danh mục VM",
+      "dauMuc": "Danh mục VM",
+      "soMuc": "2",
+      "tieuDe": "Rà soát xong danh mục: *450* VM do VNPT Net quản lý",
+      "phu": "Đã cập nhật, gửi danh mục đối soát cho VNPT-IT trên hệ thống quản lý dự án.",
+      "so": [
+        {"so": "450", "nhan": "VM do VNPT Net quản lý (90,73%)", "icon": "may-chu"},
+        {"so": "496", "nhan": "VM VNPT-IT bàn giao", "icon": "ket-noi"},
+        {"so": "46", "nhan": "VM ngoài phạm vi: 13 VNPT-IT, 02 Media, 31 đề xuất OFF", "icon": "canh-bao"}
       ],
-      "note": {"label": "Ghi chú", "text": "phân loại sơ bộ theo tên VM và đơn vị chủ quản; 23 VM (KPI, PTML, RPNEW, GSTT, CLM) cần đơn vị xác nhận."}
+      "ketLuan": "Tiếp theo: phối hợp VNPT-IT xác nhận danh mục, tắt 31 VM sau đánh giá ảnh hưởng.",
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026)."
     },
     {
-      "kicker": "02 / 04 · TÀI KHOẢN QUẢN TRỊ",
-      "title": "Triển khai đổi mật khẩu quản trị",
-      "rows": [
-        {"cols": [0.75, 1.25], "grow": true, "blocks": [
-          {"type": "stack", "blocks": [
-            {"type": "stat", "value": "505", "label": "Tài khoản quản trị đã thống kê trên 450 VM"},
-            {"type": "progress", "label": "Tiến độ đổi mật khẩu VM", "value": "33,33%", "percent": 33.33,
-             "caption": "**150/450 VM** đã hoàn thành · còn **300 VM**", "grow": true}
-          ]},
-          {"type": "stack", "blocks": [
-            {"type": "panel", "title": "Kết quả thực hiện", "tone": "light", "bullets": [
-              "Hoàn thành thống kê 505 tài khoản quản trị trên 450 VM.",
-              "Đã đổi mật khẩu quản trị cho 150 VM; tiếp tục triển khai 300 VM còn lại."
-            ]},
-            {"type": "panel", "title": "Khó khăn, rủi ro", "tone": "warn", "grow": true, "bullets": [
-              "Một số hệ thống viễn thông cần thống nhất phương án với đối tác, nhà cung cấp thiết bị trước khi thay đổi.",
-              "Đổi mật khẩu cần thực hiện trong khung giờ thấp điểm, có phương án kiểm tra và khôi phục, tránh ảnh hưởng dịch vụ."
-            ]}
-          ]}
-        ]}
+      "mau": "bang",
+      "nhan": "Phân loại VM",
+      "dauMuc": "Danh mục VM",
+      "soMuc": "3",
+      "tieuDe": "Công nghệ thông tin chiếm *62%* trong 450 VM",
+      "cot": ["Nhóm", "Số VM", "Hệ thống chính"],
+      "hang": [
+        ["Viễn thông", "171 · 38% · NTL 127 · 30 PHG 44", "CPE/ACS 48, Mentor RAN 30, NMS 28, chống spam 25"],
+        ["Công nghệ TT", "279 · 62% · NTL 261 · 30 PHG 18", "OSS/ERP, CSDL, nền tảng (TT CĐS) 200; báo cáo, KPI, web 47"]
       ],
-      "next": "Phân nhóm VM theo mức độ rủi ro, thống nhất lịch triển khai và đẩy nhanh tiến độ đổi mật khẩu."
+      "ketLuan": "Phân loại sơ bộ theo tên VM; 23 VM cần đơn vị chủ quản xác nhận.",
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026)."
     },
     {
-      "kicker": "03 / 04 · SAO LƯU, KHÔI PHỤC",
-      "title": "Triển khai sao lưu, khôi phục VM",
-      "rows": [
-        {"cols": [1], "blocks": [
-          {"type": "status_table", "rows": [
-            {"item": "Backup mức cấu hình", "status": "Hoàn thành",
-             "desc": "Theo quy trình VHKT hiện hành; sao lưu về dung lượng **VNPT-IT cấp cho VNPT Net** và **phân vùng lưu trữ nội bộ** VNPT Net."},
-            {"item": "Snapshot toàn bộ VM – Site 30 PHG", "status": "Hoàn thành",
-             "desc": "Đã phối hợp hoàn thành trên **hệ thống backup VNPT-IT**."},
-            {"item": "Snapshot toàn bộ VM – Site NTL", "status": "Chưa hoàn thành",
-             "desc": "Snapshot trên **hệ thống backup VNPT-IT**; chưa hoàn thành do thiếu dung lượng lưu trữ."},
-            {"item": "Hệ thống viễn thông đặc thù", "status": "Đang đánh giá",
-             "desc": "Đang phối hợp đối tác đánh giá khả năng hỗ trợ snapshot và rủi ro ảnh hưởng dịch vụ."}
-          ]}
-        ]},
-        {"cols": [0.88, 1.12], "grow": true, "blocks": [
-          {"type": "panel", "title": "Vướng mắc trọng tâm", "tone": "danger", "bullets": [
-            "**Sao lưu:** chưa đủ dung lượng lưu trữ phục vụ sao lưu tập trung tại tenant Backup.",
-            "**Khôi phục:** hệ thống viễn thông của VNPT Net có tính đặc thù, việc cài đặt lại cần sự phối hợp của đối tác."
-          ]},
-          {"type": "panel", "title": "Kiến nghị VNPT-IT", "tone": "dark", "bullets": [
-            "**Ưu tiên backup mức snapshot** cho **171 VM** hệ thống viễn thông.",
-            "Cấp đủ **300 TB** dung lượng lưu trữ đã phân bổ cho VNPT Net.",
-            "Hỗ trợ sao lưu tập trung, thay thế lưu trữ phân tán qua OAM.",
-            "VNPT Net đã có văn bản gửi VNPT-IT về nhu cầu dung lượng."
-          ]}
-        ]}
+      "mau": "van-de",
+      "nhan": "Mật khẩu quản trị",
+      "dauMuc": "Tài khoản quản trị",
+      "soMuc": "4",
+      "tieuDe": "Đã đổi mật khẩu quản trị cho *150/450* VM",
+      "vanDe": {
+        "t": "Còn 300 VM chưa đổi mật khẩu",
+        "y": [
+          "Hệ thống viễn thông cần thống nhất phương án với đối tác",
+          "Phải đổi trong giờ thấp điểm, có phương án khôi phục"
+        ],
+        "so": "33,33%",
+        "soNhan": "tiến độ đổi mật khẩu VM"
+      },
+      "giaiPhap": {
+        "t": "Đẩy nhanh theo nhóm rủi ro",
+        "y": [
+          "Đã thống kê 505 tài khoản quản trị trên 450 VM",
+          "Phân nhóm VM theo rủi ro, thống nhất lịch triển khai"
+        ]
+      },
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026)."
+    },
+    {
+      "mau": "bang",
+      "nhan": "Sao lưu, khôi phục",
+      "dauMuc": "Sao lưu, khôi phục",
+      "soMuc": "5",
+      "tieuDe": "Snapshot site NTL *chưa hoàn thành* do thiếu dung lượng",
+      "cot": ["Hạng mục", "Trạng thái", "Ghi chú"],
+      "hang": [
+        ["Backup cấu hình", "Hoàn thành", "Theo quy trình VHKT; lưu về dung lượng VNPT-IT cấp và phân vùng nội bộ"],
+        ["Snapshot 30 PHG", "Hoàn thành", "Trên hệ thống backup VNPT-IT"],
+        ["Snapshot NTL", "Chưa hoàn thành", "Thiếu dung lượng lưu trữ trên hệ thống backup VNPT-IT"],
+        ["Viễn thông đặc thù", "Đang đánh giá", "Phối hợp đối tác đánh giá khả năng snapshot, rủi ro ảnh hưởng dịch vụ"]
       ],
-      "note": {"label": "Mục tiêu", "text": "nâng cao an toàn dữ liệu, khả năng quản lý và khôi phục hệ thống khi xảy ra sự cố."}
+      "ketLuan": "Mục tiêu: an toàn dữ liệu, khôi phục được hệ thống khi có sự cố.",
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026)."
     },
     {
-      "kicker": "04 / 04 · GIẢI PHÁP ATBM",
-      "title": "Triển khai các giải pháp an toàn, bảo mật",
-      "lead": "Tiếp nhận khuyến nghị của VNPT-IT về Hardening, rà soát mã độc và triển khai các biện pháp tăng cường ATBM.",
-      "rows": [
-        {"cols": [1.72, 1], "grow": true, "blocks": [
-          {"type": "status_list", "items": [
-            {"status": "Hoàn thành", "text": "Chuyển đổi, cấu hình DNS Tập đoàn; ngắt card mạng kết nối Internet không cần thiết theo thiết kế."},
-            {"status": "Đang triển khai", "text": "Đổi mật khẩu (**150/450 VM**); kết nối SIEM (**150/450 VM**); rà soát, đóng các cổng dịch vụ không sử dụng theo thiết kế."},
-            {"status": "Đang đánh giá", "text": "Cài đặt EDR/EPP trên các hệ thống viễn thông; đánh giá tính tương thích và nguy cơ ảnh hưởng đến thiết bị, dịch vụ mạng lưới."}
-          ]},
-          {"type": "steps", "title": "Trọng tâm thời gian tới", "items": [
-            "Hoàn thành kết nối SIEM và đổi mật khẩu cho 300 VM còn lại.",
-            "Tiếp tục Hardening, rà soát và đóng các port không cần thiết.",
-            "Phối hợp đối tác đánh giá, thử nghiệm EDR/EPP trước khi triển khai diện rộng."
-          ]}
-        ]}
+      "mau": "the",
+      "nhan": "Giải pháp ATBM",
+      "dauMuc": "Giải pháp ATBM",
+      "soMuc": "6",
+      "tieuDe": "SIEM, Hardening đang triển khai; EDR/EPP *đang đánh giá*",
+      "phu": "Tiếp nhận khuyến nghị của VNPT-IT về Hardening, rà soát mã độc và tăng cường ATBM.",
+      "the": [
+        {"icon": "dung", "t": "Hoàn thành", "d": "Chuyển DNS Tập đoàn; ngắt card mạng Internet không cần thiết theo thiết kế."},
+        {"icon": "ten-lua", "t": "Đang triển khai", "d": "Đổi mật khẩu, kết nối SIEM (150/450 VM); đóng cổng dịch vụ không dùng."},
+        {"icon": "tim-kiem", "t": "Đang đánh giá", "d": "EDR/EPP trên hệ thống viễn thông: tương thích, nguy cơ ảnh hưởng dịch vụ."}
       ],
-      "note": {"label": "Nguyên tắc", "text": "bảo đảm an toàn, bảo mật nhưng không làm gián đoạn hoạt động của các hệ thống viễn thông."}
+      "ketLuan": "Nguyên tắc: bảo đảm ATBM nhưng không gián đoạn hệ thống viễn thông.",
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026)."
     },
     {
-      "dark": true,
-      "kicker": "THÔNG ĐIỆP TỔNG HỢP TRÌNH LÃNH ĐẠO",
-      "title": "Kết quả chính và kiến nghị",
-      "rows": [
-        {"cols": [1, 1, 1, 1], "blocks": [
-          {"type": "stat", "value": "450", "label": "VM đã chuẩn hóa danh mục"},
-          {"type": "stat", "value": "505", "label": "Tài khoản quản trị đã thống kê"},
-          {"type": "stat", "value": "33,33%", "label": "Tiến độ đổi mật khẩu, kết nối SIEM", "tone": "accent"},
-          {"type": "stat", "value": "300 TB", "label": "Dung lượng Backup kiến nghị VNPT-IT cấp đủ", "tone": "highlight"}
-        ]},
-        {"cols": [1, 1], "blocks": [
-          {"type": "text", "title": "Đã đạt được", "tone": "accent",
-           "text": "Hoàn thành chuẩn hóa danh mục 450 VM do VNPT Net quản lý, thống kê 505 tài khoản quản trị và sao lưu cấu hình các hệ thống. Tiến độ đổi mật khẩu và kết nối SIEM đạt 33,33%; đã hoàn thành snapshot tại site 30 PHG, site NTL còn vướng dung lượng lưu trữ."},
-          {"type": "text", "title": "Kiến nghị", "tone": "highlight",
-           "text": "VNPT-IT sớm cấp đủ 300 TB dung lượng Backup, đồng thời phối hợp đánh giá các giải pháp EDR/EPP và snapshot trên hệ thống viễn thông đặc thù để bảo đảm triển khai an toàn, không ảnh hưởng dịch vụ."}
-        ]}
-      ]
+      "mau": "the",
+      "nhan": "Kiến nghị",
+      "dauMuc": "Kiến nghị",
+      "soMuc": "7",
+      "tieuDe": "Kiến nghị VNPT-IT cấp đủ *300 TB* dung lượng backup",
+      "the": [
+        {"icon": "du-lieu", "t": "Cấp đủ 300 TB", "d": "Dung lượng lưu trữ đã phân bổ cho VNPT Net; đã có văn bản gửi VNPT-IT."},
+        {"icon": "may-chu", "t": "Ưu tiên snapshot 171 VM", "d": "Backup mức snapshot cho hệ thống viễn thông."},
+        {"icon": "ket-noi", "t": "Sao lưu tập trung", "d": "Thay thế lưu trữ phân tán qua OAM."},
+        {"icon": "hop-tac", "t": "Đánh giá EDR/EPP, snapshot", "d": "Phối hợp trên hệ thống viễn thông đặc thù, không ảnh hưởng dịch vụ."}
+      ],
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026)."
+    },
+    {
+      "mau": "lo-trinh",
+      "nhan": "Thời gian tới",
+      "dauMuc": "Thời gian tới",
+      "soMuc": "8",
+      "tieuDe": "Ba trọng tâm *thời gian tới*",
+      "buoc": [
+        {"icon": "bao-mat", "tg": "Trọng tâm", "t": "300 VM còn lại", "d": "Kết nối SIEM và đổi mật khẩu"},
+        {"icon": "cai-dat", "tg": "Trọng tâm", "t": "Hardening", "d": "Rà soát, đóng port không cần thiết"},
+        {"icon": "tim-kiem", "tg": "Trọng tâm", "t": "Thử nghiệm EDR/EPP", "d": "Cùng đối tác, trước khi triển khai rộng"}
+      ],
+      "nguon": "Nguồn: Báo cáo tiến độ triển khai ATBM hệ thống VM (24/10/2026)."
     }
   ]
 }

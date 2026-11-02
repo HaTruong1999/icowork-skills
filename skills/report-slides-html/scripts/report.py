@@ -11,7 +11,7 @@ Các lệnh (WORK = thư mục làm việc của một báo cáo):
 
 Mọi lệnh in dòng NEXT: chỉ việc cần làm tiếp.
 """
-import argparse, subprocess
+import argparse, os, subprocess
 import importlib
 import importlib.util
 import json
@@ -174,11 +174,10 @@ def cmd_new(a):
     else:
         shutil.copy(SKILL / "assets" / "skeleton.json", dst)
         out(f"Đã tạo {dst} từ khung mẫu.")
-    from k7_build import K7
     write_status(work, "Bước 3 – tạo khung report.json", "report.json gần như rỗng, chưa có nội dung thật",
                  f"Viết lại toàn bộ report.json theo 12 mẫu K7 (huong-dan-k7.md), rồi `R build {work}`.")
     out(f"NEXT: đọc {SKILL / 'references' / 'huong-dan-k7.md'} (mục 4-9: cấu trúc, 12 mẫu, giới hạn chữ, icon), "
-        f"xem ví dụ {K7 / 'vi-du' / 'vnpt-idecide.json'} và {K7 / 'vi-du' / 'gioi-thieu-vnpt-ai.json'}, "
+        f"xem ví dụ {SKILL / 'examples' / 'atbm-vm' / 'report.json'}, "
         f"rồi VIẾT LẠI TOÀN BỘ {dst} bằng nội dung của tài liệu nguồn, chọn mẫu phù hợp cho từng slide. "
         f"Xong chạy `report.py build {work}`.")
 
@@ -447,13 +446,14 @@ def check_example_leak(rep, content):
     """Cụm 3 từ lấy từ ví dụ mẫu mà nguồn không có -> nhiều khả năng chép nhầm (vd 'CHUYÊN ĐỀ 05').
     Chỉ xét cụm có chữ số hoặc có từ hoàn toàn không xuất hiện trong nguồn (tránh báo nhầm cụm thông dụng).
     'Có trong nguồn' = 3 từ cùng xuất hiện trong khoảng 12 từ liên tiếp (PDF nhiều cột hay làm đứt cụm)."""
-    from k7_build import K7
-    ex_files = sorted((K7 / "vi-du").glob("*.json"))
-    if not ex_files:
-        return []
     ex_slides = []
-    for ex in ex_files:
-        ex_slides += json.loads(ex.read_text(encoding="utf-8")).get("slides", [])
+    for ex in sorted((SKILL / "examples").glob("*/report.json")):
+        own = ex.parent / "content.md"
+        if own.exists() and own.read_text(encoding="utf-8").strip() == content.strip():
+            continue  # đang build chính ví dụ này: không tự so với mình
+        ex_slides += [s for s in json.loads(ex.read_text(encoding="utf-8")).get("slides", []) if isinstance(s, dict) and s.get("mau")]
+    if not ex_slides:
+        return []
     ex_ng = set()
     for s in ex_slides:
         for t in slide_texts(s):
@@ -480,7 +480,8 @@ def check_example_leak(rep, content):
                 ws = g.split()
                 # A missing common word is not evidence of copying. Require a
                 # number (stat copied from the wrong deck) as the distinctive signal.
-                distinctive = bool(re.search(r"\d", g))
+                # Chỉ coi là chép khi cụm mang con số mà nguồn KHÔNG có (số liệu của báo cáo khác).
+                distinctive = any(re.search(r"\d", w) and w not in pos for w in ws)
                 if distinctive and not in_source(g):
                     hits.setdefault(g, set()).add(i)
     return sorted(hits.items(), key=lambda kv: min(kv[1]))
@@ -565,7 +566,7 @@ def check_invented_names(rep, content):
     for i, s in enumerate(rep["slides"], 1):
         for text in slide_texts(s):
             text = unicodedata.normalize("NFC", text)
-            for sent in re.split(r"(?<=[.!?:;•|\n])\s*|\s+[–—-]\s+", text):
+            for sent in re.split(r"(?<=[.!?:;,•|\n])\s*|\s+[–—-]\s+", text):   # tên riêng không kéo qua dấu phẩy (danh sách cột/mục không phải một tên)
                 ws = [(m.group(0), m.start()) for m in tok.finditer(sent)]
                 run = []
                 for k, (w, _) in enumerate(ws + [("", 0)]):
@@ -613,7 +614,8 @@ def cmd_build(a):
         sys.exit(1)
     ds = kiem_k7(rep)
     errors = [f"{x['vi_tri']} · {x['ma']}: {x['y']}" for x in ds if x["muc"] == "loi"]
-    nhac = [x for x in ds if x["muc"] == "nhac"]
+    song_ngu = os.environ.get("REPORT_SONG_NGU") == "1"   # mặc định chỉ tiếng Việt: không nhắc thiếu bản Anh/lời thoại
+    nhac = [x for x in ds if x["muc"] == "nhac" and (song_ngu or x["ma"] not in ("M3", "M6"))]
     if errors:
         out(f"[1] Cấu trúc (K7 kiem-slide.py): LỖI ({len(errors)})")
         for e in errors[:30]:
@@ -640,7 +642,7 @@ def cmd_build(a):
             out(f"[3] Số liệu: {'CẢNH BÁO' if soft else 'LỖI'} – {len(missing)} số không thấy trong nguồn:")
             for tok, sl in list(missing.items())[:25]:
                 out(f"  - \"{tok}\" (slide {', '.join(map(str, sorted(sl)))})")
-            out("    Với từng số: chạy `report.py find WORK \"<số>\"`. Có trong nguồn dưới dạng khác → chép đúng như nguồn; "
+            out("    Với từng số: tìm trong content.md bằng công cụ read/grep (không chạy report.py). Có trong nguồn dưới dạng khác → chép đúng như nguồn; "
                 "số tự tính → thêm vào meta.computed: {\"value\": \"<số>\", \"formula\": \"<phép tính>\"}; "
                 "không có căn cứ → XÓA khỏi báo cáo.")
             if not soft:
@@ -683,7 +685,7 @@ def cmd_build(a):
             out(f"[3f] Gắn số/trạng thái sai chỗ: {'CẢNH BÁO' if soft else 'LỖI'} – {len(serr)} chỗ không khớp bảng theo dõi:")
             for e in serr[:15]:
                 out("  - " + e)
-            out("    Số có trong nguồn nhưng gắn nhầm đơn vị/mục/trạng thái. Sửa theo nguồn (xem WORK/facts.md, `report.py find`), "
+            out("    Số có trong nguồn nhưng gắn nhầm đơn vị/mục/trạng thái. Sửa theo nguồn (xem facts.md và content.md bằng công cụ read), "
                 "không đổi số cho vừa lời.")
             if not soft:
                 problems.append("gắn sai đơn vị/trạng thái")
@@ -703,7 +705,7 @@ def cmd_build(a):
             for tok, ctx in unused[:10]:
                 out(f"  - {tok}: …{ctx}…")
             if len(unused) > 10:
-                out(f"  … và {len(unused) - 10} số khác (xem bằng `report.py find`)")
+                out(f"  … và {len(unused) - 10} số khác (xem content.md)")
     else:
         out(f"[3] Số liệu: BỎ QUA (không có {content_file}; chạy `report.py extract … --work {work}` để bật kiểm tra)")
 
@@ -725,6 +727,12 @@ def cmd_build(a):
             problems.append("tràn chữ")
         else:
             out("[4] Tràn chữ: OK")
+        empty = getattr(check_overflow_k7, "empty", [])
+        if empty:
+            out(f"[4b] Slide TRỐNG: LỖI – slide {empty[0]} không dựng được nên slide {empty[0]} trở đi trắng "
+                f"(sai kiểu dữ liệu trong parts/{empty[0]:02d}.json). Đối chiếu bảng mẫu K7: hàng của `bang` là mảng ô "
+                '[["a","b"],["c","d"]]; `the`/`so`/`buoc`/`muc` là mảng object; viết lại đúng file đó rồi chạy lại.')
+            problems.append("slide trống")
 
     if browser and not a.no_pdf:
         pdf_path = work / f"{name}.pdf"
@@ -746,7 +754,7 @@ def cmd_build(a):
         out("[5] PDF: BỎ QUA")
 
     if problems:
-        if attempts > MAX_ATTEMPTS:
+        if attempts > MAX_ATTEMPTS and os.environ.get('REPORT_WORKFLOW_DRIVER') != '1':
             write_status(work, "Bước 4 – build", f"DỪNG SAU {attempts - 1} LẦN SỬA: vẫn còn {', '.join(problems)}",
                          f"KHÔNG chạy build nữa. Báo người dùng: bản nháp {html_path.name}, log {work / 'build.log'}, "
                          f"các lỗi còn lại ở trên. Để người dùng quyết định sửa tay hay đổi cách trình bày.")
@@ -759,7 +767,7 @@ def cmd_build(a):
                      f"Sửa report.json (ghi lại toàn bộ file) theo các dòng LỖI, rồi `R build {work}`.")
         out(f"\nKẾT QUẢ: CẦN SỬA ({', '.join(problems)})")
         out(f"NEXT: sửa {path} theo các dòng LỖI ở trên rồi chạy lại `report.py build {work}`."
-            + (f" Còn {MAX_ATTEMPTS - attempts + 1} lần thử nữa trước khi PHẢI dừng và báo người dùng." if attempts >= MAX_ATTEMPTS - 1 else ""))
+            + (f" Còn {MAX_ATTEMPTS - attempts + 1} lần thử nữa trước khi PHẢI dừng và báo người dùng." if attempts >= MAX_ATTEMPTS - 1 and os.environ.get('REPORT_WORKFLOW_DRIVER') != '1' else ""))
         sys.exit(1)
     attempts_file.unlink(missing_ok=True)
     write_status(work, "Bước 4 – build", f"XONG: {html_path.name} + PDF, {len(rep['slides'])} slide. "

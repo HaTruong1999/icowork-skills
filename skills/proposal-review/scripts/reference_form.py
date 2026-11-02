@@ -13,7 +13,7 @@ def render(content_html,mdt,title,script_path,report_data=None):
     # Keep reference styling and all twelve sections. Never retain sample review facts.
     doc.title.string=title
     header=doc.select_one('header.form-head');header.h1.string=title
-    header.select_one('.form-id').string='Proposal-review-v5'
+    header.select_one('.form-id').string='Proposal-review-v6'
     filename=re.search(r'trên file (.+)\.$',mdt,re.M)
     day=re.search(r'Đánh giá ngày ([\d/]+)',mdt)
     for row in header.select('.meta > div'):

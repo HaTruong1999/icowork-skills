@@ -48,4 +48,111 @@ class Checkpoints(unittest.TestCase):
    env={**os.environ,'IWORK_DRIVER':'1'}
    r=subprocess.run([sys.executable,str(REVIEW),'prepare',str(src)],capture_output=True,text=True,cwd=d,env=env)
    self.assertEqual(r.returncode,0,r.stderr)
+
+class FullLoop(unittest.TestCase):
+ """init → candidates → verify → critique → details → complete, bằng JSON viết tay như model sẽ viết."""
+ def run_cli(self,cwd,*args):
+  r=subprocess.run([sys.executable,str(SCRIPT),*map(str,args)],capture_output=True,text=True,cwd=cwd,timeout=300)
+  return r.returncode,r.stdout+r.stderr
+ def test_full_loop_with_repairs(self):
+  import fitz
+  with tempfile.TemporaryDirectory() as d:
+   d=Path(d);src=d/'de_xuat.pdf'
+   doc=fitz.open()
+   for text in ('De xuat trien khai nen tang X cho 3 don vi. Ngan sach 5 ty dong.','Ke hoach: hoan thanh trong quy 4/2026. Chua co phan tich rui ro.'):
+    page=doc.new_page();page.insert_text((72,72),text)
+   doc.save(src);doc.close()
+   code,out=self.run_cli(d,'init','--source',src,'--output','out','--today','2026-10-30')
+   self.assertEqual(code,0,out);self.assertIn('=== CHƯA XONG (phase=candidates)',out)
+   self.assertRegex(out,r'python3 \\"/[^"]*/out/next\.py')   # launcher: đường dẫn tuyệt đối TRONG workspace (iWork tự duyệt, chạy từ mọi thư mục, không cần cd), không có đường dẫn skill
+   r=subprocess.run([sys.executable,'out/next.py'],cwd=d,capture_output=True,text=True);self.assertEqual(r.returncode,0,r.stderr);self.assertIn('=== CHƯA XONG',r.stdout)
+   w=d/'out';wd=w/'_review'/'de_xuat';nxt=('next','--work','out')
+   (wd/'candidates.json').write_text(json.dumps({'doc_title':'Đề xuất nền tảng X','verdict':'Cần bổ sung.','strengths':[{'text':'Nêu rõ ngân sách','slides':'1'}],
+    'issues':[{'id':'I1','title':'Thiếu phân tích rủi ro','group':'nen','slides':[2],'quote':'Chua co phan tich rui ro',
+     'problem':'Trang 2 tự nêu chưa có phân tích rủi ro.','why':'Lãnh đạo khó cân nhắc khi chưa thấy rủi ro.','fix':'Bổ sung phân tích rủi ro chính và biện pháp giảm thiểu.'}],'notes':[]},ensure_ascii=False))
+   code,out=self.run_cli(d,*nxt);self.assertEqual(code,0,out);self.assertIn('phase=critique',out);self.assertIn('sub-agent',(w/'TASK.md').read_text(encoding='utf8'))
+   crit={'I1':{'ket_luan':'DUNG','ly_do':'Nguồn tự nêu thiếu.','counterevidence':{'locations':['trang 1','trang 2'],'finding':'Không thấy phân tích rủi ro ở trang 1.'}}}   # tối giản: driver tự điền a, b, checks, effect
+   (wd/'critique.json').write_text(json.dumps(crit,ensure_ascii=False))
+   code,out=self.run_cli(d,*nxt);self.assertEqual(code,0,out);self.assertIn('phase=details',out)   # thiếu _meta: driver tự ghi same_context, không bắt sửa
+   self.assertEqual(json.loads((wd/'critique.json').read_text(encoding='utf8'))['_meta']['mode'],'same_context')
+   (wd/'report-details.json').write_text('{"scorecard": [}')                                      # JSON hỏng -> giao sửa
+   code,out=self.run_cli(d,*nxt);self.assertEqual(code,0,out);self.assertIn('không phải JSON hợp lệ',(w/'TASK.md').read_text(encoding='utf8'));self.assertNotIn('Traceback',out)
+   names=['Đề xuất rõ ràng','Chính xác, nhất quán','Bằng chứng','Đối tượng','Hiệu quả, chi phí','Kế hoạch, nguồn lực','Rủi ro','Cấu trúc']
+   details={'metadata':{'presenter':None,'department':None,'version':None,'review_type':None,'request_summary':None},
+    'scorecard':[{'name':n,'weight':10 if i<4 else 15,'score':6,'rationale':'Đánh giá theo nội dung hai trang nguồn.','slides':[1,2]} for i,n in enumerate(names)],
+    'page_reviews':[{'page':1,'title':'Đề xuất','observation':'Nêu phạm vi và ngân sách.','issue_ids':[]},{'page':2,'title':'Kế hoạch','observation':'Nêu mốc, tự nhận chưa có phân tích rủi ro.','issue_ids':['I1']}],
+    'questions':[{'text':'Rủi ro chính và cách giảm thiểu là gì?','issue_ids':['I1']}],
+    'actions':[{'issue_id':'I1','task':'Bổ sung phân tích rủi ro.','owner':None,'collaborators':None,'deadline':None}],
+    'proposed_structure':[{'title':'Rủi ro','content':'Thêm mục rủi ro sau kế hoạch','is_new':True,'rationale':'Đề xuất của reviewer'}],
+    'response_draft':'Đề nghị bổ sung phân tích rủi ro trước khi trình.','report_checks':{'notes':[]}}
+   (wd/'report-details.json').write_text(json.dumps(details,ensure_ascii=False))
+   code,out=self.run_cli(d,*nxt);self.assertEqual(code,0,out);self.assertIn('HOÀN TẤT',out)
+   st=json.loads((w/'session.json').read_text());self.assertEqual(st['phase'],'complete');self.assertTrue(st['all_pass'])
+   html=(w/'Danh_gia_de_xuat.html').read_text(encoding='utf8')
+   self.assertIn('Thiếu phân tích rủi ro',html);self.assertIn('cùng phiên',html)
+   self.assertEqual(sorted(x.name for x in w.iterdir()),sorted(['Danh_gia_de_xuat.html','_review','de_xuat.pdf','session.json']))
+ def test_no_issues_skips_critique_repair(self):
+  import fitz
+  with tempfile.TemporaryDirectory() as d:
+   d=Path(d);src=d/'ok.pdf';doc=fitz.open();doc.new_page().insert_text((72,72),'Bao cao day du, ro rang.');doc.save(src);doc.close()
+   code,out=self.run_cli(d,'init','--source',src,'--output','out','--today','2026-10-30');self.assertEqual(code,0,out)
+   wd=d/'out'/'_review'/'ok'
+   (wd/'candidates.json').write_text(json.dumps({'doc_title':'Báo cáo','verdict':'Gửi được.','strengths':[],'issues':[],'notes':[]},ensure_ascii=False))
+   code,out=self.run_cli(d,'next','--work','out');self.assertEqual(code,0,out)
+   code,out=self.run_cli(d,'next','--work','out');self.assertEqual(code,0,out)
+   self.assertIn('phase=details',out);self.assertNotIn('Bổ sung phản biện',out)
+ def test_minimal_details_only_scorecard_is_enough(self):
+  """Model chỉ viết điểm 8 tiêu chí; nhận xét từng trang, hành động, câu hỏi, phản hồi do driver dựng từ final.json."""
+  import fitz
+  with tempfile.TemporaryDirectory() as d:
+   d=Path(d);src=d/'dx.pdf';doc=fitz.open()
+   for text in ('De xuat nen tang X. Ngan sach 5 ty dong.','Ke hoach quy 4/2026. Chua co phan tich rui ro.'):doc.new_page().insert_text((72,72),text)
+   doc.save(src);doc.close()
+   code,out=self.run_cli(d,'init','--source',src,'--output','out','--today','2026-10-30');self.assertEqual(code,0,out)
+   w=d/'out';wd=w/'_review'/'dx'
+   (wd/'candidates.json').write_text(json.dumps({'doc_title':'X','verdict':'.','strengths':[],'issues':[
+    {'id':'I1','title':'Thiếu phân tích rủi ro','group':'nen','slides':[2],'quote':'Chua co phan tich rui ro','problem':'Trang 2 tự nêu chưa có phân tích rủi ro.','why':'Khó cân nhắc.','fix':'Bổ sung phân tích rủi ro.'}],'notes':[]},ensure_ascii=False))
+   self.run_cli(d,'next','--work','out')
+   ok={k:True for k in ('title','problem','why','fix','priority','location')}
+   (wd/'critique.json').write_text(json.dumps({'I1':{'a':'x','b':'y','ket_luan':'DUNG','ly_do':'z','checks':ok,'counterevidence':{'locations':['trang 1','trang 2'],'finding':'Đối chiếu hai trang.','effect':'supports'}}},ensure_ascii=False))
+   code,out=self.run_cli(d,'next','--work','out');self.assertIn('phase=details',out)
+   names=['Đề xuất rõ ràng','Chính xác, nhất quán','Bằng chứng','Đối tượng, thị trường','Hiệu quả, chi phí','Kế hoạch, nguồn lực','Rủi ro','Cấu trúc trình bày']
+   bad={'scorecard':[{'name':n,'score':6,'rationale':'Bám nội dung hai trang.','slides':[1]} for n in names[:7]]}
+   (wd/'report-details.json').write_text(json.dumps(bad,ensure_ascii=False))
+   code,out=self.run_cli(d,'next','--work','out');self.assertEqual(code,0,out);self.assertIn('đúng 8 mục',(w/'TASK.md').read_text(encoding='utf8'))
+   good={'scorecard':[{'name':n,'score':6,'rationale':'Bám nội dung hai trang.','slides':[1]} for n in names]}
+   (wd/'report-details.json').write_text(json.dumps(good,ensure_ascii=False))
+   code,out=self.run_cli(d,'next','--work','out');self.assertEqual(code,0,out);self.assertIn('HOÀN TẤT',out)
+   html=(w/'Danh_gia_dx.html').read_text(encoding='utf8')
+   self.assertIn('Thiếu phân tích rủi ro',html);self.assertIn('Ke hoach quy 4/2026',html)   # nhận xét trang 2 do driver dựng từ nguồn
+   self.assertEqual(json.loads((w/'session.json').read_text())['all_pass'],True)
+ def test_heuristic_details_warning_does_not_block(self):
+  import fitz
+  with tempfile.TemporaryDirectory() as d:
+   d=Path(d);src=d/'dx.pdf';doc=fitz.open()
+   for text in ('De xuat nen tang X. Ngan sach 5 ty dong.','Ke hoach quy 4/2026. Chua co phan tich rui ro.'):doc.new_page().insert_text((72,72),text)
+   doc.save(src);doc.close()
+   code,out=self.run_cli(d,'init','--source',src,'--output','out','--today','2026-10-30');self.assertEqual(code,0,out)
+   w=d/'out';wd=w/'_review'/'dx'
+   bad='Thiếu hoàn toàn dự toán kinh phí chi tiết cho từng hạng mục triển khai nền tảng, không có bảng phân bổ ngân sách theo quý và không nêu nguồn vốn của dự án'
+   (wd/'candidates.json').write_text(json.dumps({'doc_title':'X','verdict':'.','strengths':[],'issues':[
+    {'id':'I1','title':'Thiếu phân tích rủi ro','group':'nen','slides':[2],'quote':'Chua co phan tich rui ro','problem':'Trang 2 tự nêu chưa có phân tích rủi ro.','why':'Khó cân nhắc.','fix':'Bổ sung phân tích rủi ro.'},
+    {'id':'I2','title':bad,'group':'nen','slides':[1],'quote':'Ngan sach 5 ty dong','problem':bad+'.','why':'Khó duyệt.','fix':'Bổ sung dự toán.'}],'notes':[]},ensure_ascii=False))
+   self.run_cli(d,'next','--work','out')
+   ok={k:True for k in ('title','problem','why','fix','priority','location')}
+   ce={'locations':['trang 1','trang 2'],'finding':'Đối chiếu hai trang.','effect':'supports'}
+   (wd/'critique.json').write_text(json.dumps({'_meta':{'mode':'same_context'},'I1':{'a':'x','b':'y','ket_luan':'DUNG','ly_do':'z','checks':ok,'counterevidence':ce},
+    'I2':{'a':'x','b':'y','ket_luan':'SAI','ly_do':'Trang 1 đã có ngân sách 5 tỷ đồng.','checks':ok,'counterevidence':ce}},ensure_ascii=False))
+   code,out=self.run_cli(d,'next','--work','out');self.assertIn('phase=details',out)
+   # Lý do chấm điểm nhắc lại nhận định đã bị phản biện loại: trước đây chặn cả lượt, nay chỉ cảnh báo.
+   det={'scorecard':[{'name':f'Tiêu chí {i}','score':5,'rationale':bad,'slides':[1]} for i in range(1,9)]}
+   (wd/'report-details.json').write_text(json.dumps(det,ensure_ascii=False))
+   code,out=self.run_cli(d,'next','--work','out');self.assertEqual(code,0,out)
+   self.assertIn('HOÀN TẤT',out);self.assertIn('LƯU Ý',out)
+ def test_no_api_path_left(self):
+  root=Path(__file__).resolve().parent.parent
+  self.assertFalse((root/'scripts'/'run_coding_full.py').exists())
+  for f in root.rglob('*.py'):
+   if f.name=='test_iwork.py':continue
+   self.assertNotIn('api-genai',f.read_text(encoding='utf8'),f)
 if __name__=='__main__':unittest.main()

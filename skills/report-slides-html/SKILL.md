@@ -1,68 +1,78 @@
 ---
 name: report-slides-html
-description: Tạo báo cáo điều hành dạng slide HTML 16:9 và PDF từ PDF, Excel, CSV, Word hoặc PowerPoint, dùng giao diện VNPT AI K7 và kiểm tra chặt tính nhất quán chương, bằng chứng nguồn và visual QA. Dùng khi cần tổng hợp báo cáo cho lãnh đạo; không dùng để review tài liệu.
+description: Tạo báo cáo điều hành dạng slide HTML 16:9 và PDF từ PDF, Excel, CSV, Word hoặc PowerPoint, dùng giao diện K7 bản chung (không logo VNPT AI, gắn được logo đơn vị) và kiểm tra chặt số liệu, tên riêng, tràn chữ. Dùng khi cần tổng hợp báo cáo cho lãnh đạo; không dùng để review tài liệu.
 ---
 
-# Báo cáo điều hành trên iWork (giao diện K7)
+# Báo cáo điều hành dạng slide (giao diện K7 chung)
 
-Giao diện (HTML/CSS, 12 mẫu slide) do bộ K7 của anh Hoàng cấp, khoá sẵn trong `k7/Tao-slide-VNPT-AI.html` - không sửa. AI chỉ viết nội dung JSON theo đúng [huong-dan-k7.md](references/huong-dan-k7.md) mục 4-9 (schema.md/writing_guide.md cũ không áp dụng nữa cho bản `-k7` này).
+Bạn viết **nội dung** từng slide (JSON). Driver `iwork.py` lo phần còn lại: trích nguồn, kiểm số liệu, ghép, render HTML/PDF bằng khung K7 khoá sẵn, tự kiểm chất lượng và giao. Dùng model mặc định của iWork; không gọi API riêng.
 
-Đầu ra là HTML + PDF; chọn ý theo nguồn và người đọc. Giữ chất lượng, không cắt số slide hay số ý để tiết kiệm token. Cơ chế chống mất tiến độ là **lưu từng slide**, không phải rút ngắn nội dung.
+## Bắt đầu ngay, không hỏi
 
-## Khởi động
+Người dùng chỉ chọn skill và đính kèm tệp; lời nhắn có thể chỉ là "Mở <tên skill>". **Đó đã là yêu cầu đầy đủ.** Chạy `start` NGAY với tệp đính kèm (đường dẫn tương đối iWork liệt kê). Không hỏi tệp nào, ngày, phạm vi hay có muốn bắt đầu không, và không trả lời bằng lời giải thích skill làm gì. Tệp chưa được trích xuất trong ngữ cảnh là bình thường: driver tự trích.
 
-`SKILL_DIR` là thư mục chứa file này. Chỉ dùng entrypoint **`SKILL_DIR/iwork.py`**. Luôn gọi bằng `python3` trên macOS/Linux hoặc `python` trên Windows, kèm đường dẫn tuyệt đối của script trong dấu ngoặc kép. Không dùng đường dẫn tuyệt của trình thông dịch, shell variables, `python -c`, `cd` hoặc ghép nhiều lệnh. Đọc file bằng `cat` trên macOS/Linux hoặc `Get-Content` trên Windows.
+## Lệnh shell: chỉ MỘT dạng được phép
+
+iWork hiện hộp xin quyền và **đứng chờ người dùng bấm** với mọi lệnh khác dạng dưới đây. Mỗi lần như vậy là một lần làm phiền người dùng.
+
+```text
+python3 "SKILL_DIR/iwork.py" start "INPUT" --work "report-output"     # chỉ MỘT lần, lệnh đầu tiên
+python3 "report-output/advance.py"                                    # mọi lệnh sau: driver in sẵn, chạy nguyên văn
+```
+
+`SKILL_DIR` là thư mục chứa tệp này (đường dẫn tuyệt đối, trong ngoặc kép; Windows dùng `python`). Sau `start`, driver tạo `report-output/advance.py` và chỉ in lệnh dạng trên: **không bao giờ tự gõ lại đường dẫn skill** (gõ sai sẽ lỗi và bị hỏi quyền). Mọi đường dẫn khác là **tương đối**, trong ngoặc kép. CẤM:
+
+- `cd`, `&&`, `;`, `|`, `>`, `2>/dev/null`, `$BIẾN`, `$(…)`, dấu huyền, `~`, vòng lặp, nhiều dòng.
+- `python3 -c`, heredoc, tự viết script, `ls`/`cat`/`find`/`grep` trên thư mục skill. Cần xem tệp thì dùng công cụ `read`; cần ghi tệp thì dùng `write`/`edit`, không dùng shell. Muốn kiểm JSON hay đếm ký tự: chạy `advance`, driver đã báo đúng lỗi và số ký tự cần bớt.
+- Đường dẫn ngoài workspace hiện tại. Tệp người dùng gửi: dùng đúng đường dẫn tương đối mà iWork liệt kê cho lượt này. `--work` luôn là `report-output` (không thêm tên thư mục phiên phía trước).
+
+Đường dẫn `<S>` in ở dòng "Base directory for this skill" ngay sau nội dung skill này: chép nguyên văn, **không `ls`/`find` để tìm** (`ls` thư mục skill bị iWork hỏi quyền).
+
+## Quy tắc không được dừng
+
+Người dùng **không được phải nhắn thêm** để skill chạy tiếp. Mọi lệnh driver kết thúc bằng một trong ba dòng:
+
+- `=== CHƯA XONG … ===`: làm đúng việc được nêu rồi chạy lệnh tiếp **trong cùng lượt**. Ghi xong plan, vài slide hay build đạt đều **chưa phải** là xong.
+- `=== DỪNG … ===`: chỉ khi tệp trạng thái bị sửa tay hoặc không có bản nào để giao. Báo đúng trạng thái.
+- `HOÀN TẤT`: trả kết quả (xem cuối trang). Bản có chữ `BẢN NHÁP` vẫn là HOÀN TẤT: giao file và nêu rõ các cảnh báo.
+
+Thêm:
+1. **Không hỏi lại, không xin xác nhận, không đưa lựa chọn** (ngày, số slide, chương, mẫu, bỏ qua bước nào): tự quyết theo nguồn; điểm chưa chắc ghi vào `meta.canXacNhan`. Mọi lỗi driver báo đều tự sửa được rồi chạy lại.
+2. **Mỗi bước chỉ làm đúng việc driver nêu, không phân tích dài.** Nghĩ lâu trên một quyết định là cách duy nhất khiến lượt bị cắt đứt giữa chừng. Thiếu chắc chắn thì chọn phương án đơn giản nhất.
+3. **Không tạo tệp ngoài** `notes.md`, `plan.json`, `parts/NN.json` trong WORK; không sửa `iwork-state.json`, `job-step.json`, `report.json`. Driver tự sửa lỗi icon và số chương/số mục, tự lập bản kiểm chất lượng và tự `finish`.
+4. **Bị ngắt hay nén ngữ cảnh**: đọc `notes.md`, chạy lại `advance "report-output"`; không `start` lại, không viết lại slide đã đạt.
+
+**Sau khi bị nén ngữ cảnh hoặc người dùng bảo "làm tiếp":** việc đầu tiên là chạy `python3 "report-output/advance.py"`; lệnh này luôn đúng và làm tiếp từ chỗ dừng. Không tìm lại tệp nguồn (`ls`, `find`), không `init`/`start` lại. **Luôn gọi công cụ bash thật.** Tuyệt đối không viết lệnh thành chữ như `[Assistant tool call]: bash(...)` trong câu trả lời: chữ đó không chạy được, lượt kết thúc và người dùng phải nhắn lại.
+
+**Người dùng báo lỗi tệp sau khi đã `HOÀN TẤT`** (trang trắng, chữ tràn, sai số, muốn sửa chữ): đó là việc của driver, không phải của bạn tự điều tra. **Cấm** mở HTML/PDF bằng `python3 -c`, `grep`, `cat`, `fitz`: các lệnh đó bị iWork hỏi quyền và không sửa được gì. Việc đúng: nếu cần đổi chữ thì sửa `report-output/_work/parts/NN.json` bằng công cụ `edit`, rồi chạy `python3 "report-output/_work/advance.py"`. Driver tự kiểm đầu ra thật (kể cả slide trắng), tự sửa lỗi cơ học, dựng lại HTML/PDF và in `HOÀN TẤT` khi xong.
+
+## Các bước
 
 ```text
 python3 "SKILL_DIR/iwork.py" start "INPUT" --work "report-output"
 ```
 
-`INPUT` là file đính kèm/đường dẫn thực tế của người dùng. `WORK` là thư mục kết quả mới nằm trong workspace iWork thực tế của hội thoại (lấy từ công cụ, không tự đoán nhánh RAU/TraoDoiRieng; dùng tên thư mục con tương đối theo cwd của tool). Không đưa tài liệu mẫu hoặc đáp án vào nguồn. Nhiều file thuộc cùng báo cáo thì truyền cùng lệnh; các bài độc lập hoàn tất lần lượt. Nếu người dùng chỉ định ngày báo cáo thì thêm `--date DD/MM/YYYY`; nếu không đối chiếu ngày ở đầu nguồn mà script gợi ý.
+`INPUT` là tệp người dùng gửi (nhiều tệp cùng một báo cáo thì truyền cùng lệnh). Thêm `--date DD/MM/YYYY` khi người dùng nêu ngày, `--author` khi nêu rõ đơn vị. Mặc định **chỉ tiếng Việt**; lời thoại do driver tự tổng hợp từ chữ trên slide (bạn không viết `loiThoai`); chỉ thêm `--song-ngu` khi người dùng yêu cầu bản tiếng Anh. Thiếu thư viện thì chạy lệnh cài driver in ra rồi `start` lại.
 
-Lệnh tự kiểm môi trường, trích nguồn và tính facts. Thiếu dependency thì làm theo lệnh in ra rồi chạy lại. Không xem bước lỗi là thành công. Không sửa scripts/assets để cho qua kiểm tra.
+**Giao diện và logo:** skill này dùng giao diện **chung**: không logo VNPT AI, chân trang "iView"; người xem tự gắn logo bằng nút **Logo và chân trang** trong trang HTML. Cần nhận diện VNPT AI thì dùng skill `report-slides-html-vnptai`. Người dùng đưa tệp logo thì thêm `--logo "<tệp ảnh>"` vào `start`; muốn chữ chân trang riêng thì `--chan-trang "VNPT"`. Logo đến sau khi đã giao: chạy lại `start` cùng `--work` với `--logo`, rồi `advance`.
 
-## Thực hiện liên tục đến khi hoàn tất
+1. **Đọc một lần** `content.md` và `facts.md`. Bảng 12 mẫu K7 (trường, số mục, giới hạn ký tự, icon) do `start` in sẵn: **không cần đọc** [huong-dan-k7.md](references/huong-dan-k7.md), chỉ mở khi cần ví dụ. Rồi ghi **`notes.md`** (tối đa 25 dòng): thông điệp chính, ngày nguồn, số liệu cần dùng kèm vị trí, nhóm việc, hạn, kiến nghị. Đây là bộ nhớ của bạn; các lô sau không đọc lại toàn bộ nguồn.
+2. **`plan.json`**: `{"meta":{"ten":"…","ban":"Bản 1 · dd/mm/yyyy","computed":[],"canXacNhan":[]},"outline":["tiêu đề slide 1","tiêu đề slide 2"]}` (`outline` là danh sách CHUỖI). Báo cáo ngắn thường 8–10 slide; có tiến độ/rủi ro/kiến nghị thì có slide tóm tắt điều hành. Số liệu tự tính chỉ khai trong `meta.computed` dạng `{"value","formula":"a+b"}`.
+   - Có chương (nguồn chia phần rõ): ít nhất hai slide `mau:"chuong"`; slide nội dung ghi `dauMuc` chữ. Không có chương: chỉ dùng `dauMuc` chữ. **Đánh số do driver tự lo**, bạn không cần tính.
+3. **`parts/NN.json`**: driver giao từng lô tối đa 6 slide. Ghi cả lô bằng nhiều lệnh `write` **trong cùng một bước**. Mỗi tệp là một object slide có `"mau"` (1 trong 12 mẫu) và `"tieuDe"`; bìa là `01.json`; không bọc trong `slides`.
+4. **`advance`** sau mỗi lô. Đủ slide thì driver tự build và kiểm (cấu trúc K7, giới hạn chữ, số có trong nguồn, nhất quán %, tên riêng, tràn chữ, PDF). Có lỗi: sửa **tất cả** lỗi trong danh sách rồi `advance`. Tràn chữ thì viết ngắn lại hoặc tách slide, không sửa khung. Hết 4 lượt build lỗi thì driver tự giao bản nháp kèm cảnh báo.
+5. Build đạt thì driver **tự kiểm chất lượng và `finish`** trong cùng lệnh, rồi in `HOÀN TẤT`. Bạn không viết file kiểm. Chỉ khi driver in `BUILD ĐẠT nhưng còn … yêu cầu bao phủ` thì mở `TASK.md`, sửa slide nêu đủ mã dòng/đơn vị/hạn được liệt kê rồi `advance`.
 
-Yêu cầu tạo báo cáo là một tác vụ liền mạch. Sau mỗi lệnh, đọc kết quả và **thực hiện ngay lệnh NEXT trong cùng lượt**, không trả lời người dùng để chờ “tiếp tục”, “xong chưa” hoặc mở thêm lượt. Chỉ được kết thúc lượt khi:
+## Luật nội dung (độ chính xác)
 
-- `finish` đã in `HOÀN TẤT`; hoặc
-- có trở ngại thật sự không thể tự xử lý sau các vòng sửa cho phép (thiếu quyền/tệp, dependency không cài được, nguồn hỏng, hoặc không có khả năng xem ảnh bắt buộc). Khi đó phải báo chính xác trạng thái và lỗi, không nói như đã xong.
-
-Không dừng chỉ vì đã tạo plan, đã ghi một số slide, lệnh vừa in `NEXT`, build đang lỗi có thể sửa, hoặc đang ở phase `building`/`quality`.
-
-## Viết theo từng phần và lưu ngay
-
-1. Đọc toàn bộ `WORK/content.md`, `WORK/facts.md`, [huong-dan-k7.md](references/huong-dan-k7.md) mục 4-9 (cấu trúc, 12 mẫu, giới hạn chữ, icon). Không đọc toàn bộ ví dụ báo cáo khác nếu không cần.
-2. Đơn vị báo cáo/tác giả chỉ lấy từ nguồn hoặc yêu cầu rõ của người dùng, không lấy hồ sơ tài khoản iWork hay bài cũ; nguồn không có thì để trống `meta.author` và dùng kicker theo chủ đề. Kiến nghị tự đề xuất phải ghi rõ là đề xuất, không trình bày như yêu cầu đã có trong nguồn. Tỷ lệ thấp nhất không tự chứng minh chậm kế hoạch. Với tổng do nguồn công bố qua nhiều hạng mục, giữ nguyên đơn vị đo và ghi “tổng theo bảng nguồn”, không suy ra số đối tượng duy nhất. Làm rõ phạm vi bằng nhãn/chú thích; không đổi đơn vị của số nguồn sang số dòng hoặc số bản ghi.
-
-   Ghi `WORK/notes.md`: người đọc, ngày nguồn, thông điệp chính, nhóm việc, tiến độ, đơn vị chậm, hạn và quyết định cần chốt. Với bảng theo dõi, giữ quan hệ **mã dòng → công việc → đơn vị → hạn → trạng thái → kết quả**. Chỉ cộng các đại lượng cùng phạm vi và đơn vị đo.
-3. Ghi `WORK/plan.json`: `{"meta":{"ten":{"vi":"…","en":"…"},"ban":"Bản 1 · dd/mm/yyyy","computed":[]},"outline":["tiêu đề từng slide"]}`. `iwork.py build` tự nhập các phép tính do công cụ phát ra trong facts.md, không cần chép tay; `meta.computed` chỉ dành cho phép tính số học bổ sung có toán tử và các toán hạng kiểm được. Không đưa số nguồn hoặc câu trích nguồn vào `computed` để qua validator. Số slide theo nội dung; báo cáo ngắn ưu tiên 8–10 slide thay vì chèn trang chuyển chương rỗng.
-
-   Trước khi chốt outline: tạo một slide tóm tắt điều hành nếu nguồn có tiến độ/rủi ro/kiến nghị. Nếu nguồn có các phần/chương rõ ràng (ví dụ `1 · VỀ VNPT AI`, `2 · QUY MÔ`), phải giữ các trang ngăn chương bằng `mau:"chuong"` kể cả deck ngắn; không được bỏ trang chương rồi vẫn dùng số phân cấp. Khi có chương, cần ít nhất hai trang chương, đánh số liên tục và các slide nội dung dùng `dauMuc` khớp chương để template sinh `1.1, 1.2…`. Nếu nguồn không có chương và không tạo trang chương, mọi slide nội dung phải đặt `soMuc` phẳng, liên tục `1`, `2`, `3`…; không dùng `1.1/2.1`.
-4. Chạy lệnh `resume` mà script in ra. Ghi ngay **toàn bộ lô tối đa 3 slide** được chỉ định vào đúng các đường dẫn `parts/NN.json`, mỗi file là một object slide có trường `"mau"` (1 trong 12 mẫu K7). Bìa là `parts/01.json` với `"mau":"bia"`, không tạo `00.json`. Ghi xong cả lô thì gọi `resume` ngay trong cùng lượt và tiếp tục cho đến khi đủ phần. Không viết lại slide đã lưu, không tự tạo tên chen giữa như `02b.json`, không bọc phần trong `slides` hoặc `report`.
-5. Khi đủ phần, chạy nguyên lệnh `build` script in ra **ngay trong cùng lượt**. Nó ghép phần, kiểm tra bằng `k7/cong-cu/kiem-slide.py` (cấu trúc, giới hạn chữ, icon) và các kiểm chứng số liệu của report-slides-html (số phải có trong nguồn, nhất quán %, tên riêng không bịa), render HTML/PDF bằng khung K7 khoá sẵn, lưu `build.log`. Có lỗi thì đọc log, sửa phần liên quan hoặc plan.json và build lại ngay; không trả lời người dùng giữa các vòng sửa. Không sửa trực tiếp report.json vì đó là file ghép tự động. Khung K7 khoá sẵn: không tự shrink chữ khi tràn - tràn thì PHẢI rút câu/tách slide trong giới hạn ký tự của mẫu, không sửa CSS/HTML của khung. Tối đa 3 vòng sửa cho cùng lỗi; còn lỗi thì báo rõ bản nháp và log, không tuyên bố đạt.
-
-6. Build đạt chưa phải hoàn tất: đọc TASK.md kiểm chất lượng, coverage-required.json và quality-audit.template.json; xem ảnh nếu công cụ hỗ trợ rồi viết quality-audit.json. Nếu phiên không có khả năng đọc ảnh, phải ghi rõ hạn chế; dùng kiểm tra geometry của build, không khẳng định đã xem ảnh. Dùng bằng chứng trong chính slide cuối cho từng dòng cần bao phủ. Chạy `iwork.py finish WORK` theo lệnh driver. Có lỗi nội dung thì sửa parts/plan, build và audit lại đúng hash; chỉ giao khi finish trả HOÀN TẤT. Khi đó `finish` tự dọn toàn bộ file nháp (content.md, facts.md, parts/, report.json, build.log, _preview, …) vào `WORK/_work/`, chỉ để lại `{tên}.html`, `{tên}.pdf`, `iwork-state.json` và `delivery.json` ở gốc WORK. Cần Word sau đó thì vẫn chạy `report.py docx WORK` như cũ — tự tìm report.json trong `_work/` nếu không thấy ở gốc.
-
-## Kiểm tra chất lượng trước khi trả
-
-- Mỗi số phải nêu đúng đối tượng, phạm vi, đơn vị đo; KPI của một đơn vị không được trình bày như tổng chung. Số có trong nguồn chưa đủ để kết luận diễn giải đúng.
-- Giữ nguyên cách viết số của nguồn trong cả nội dung Việt và Anh (`9.360`, không đổi thành `9,360`; `48,5`, không đổi thành `48.5`). Bản dịch chỉ dịch chữ, không đổi dấu số.
-- Mọi tên vùng, đơn vị, chủ sở hữu, nguyên nhân và mốc hạn trong kết luận/kế hoạch phải có bằng chứng trực tiếp. Không gán "hai vùng còn lại" thành tên hai vùng cụ thể nếu nguồn không nêu.
-- Tách công việc có cùng con số nhưng khác phạm vi. Không ghép "tích hợp thiết bị" với "kết nối phiếu sự cố" thành một cam kết.
-- Mốc ngày gắn đúng **công việc**: hạn lập danh mục không được thay bằng hạn hardening/quét log. Không nhầm ngày nguồn với hạn công việc.
-- Trạng thái một dòng không đại diện cả mục. Nếu chỉ một số dòng chưa bắt đầu, nêu mã dòng và đơn vị cụ thể. Đối chiếu thông báo validator với nguồn trước khi sửa, vì kiểm tra mẫu có thể báo nhầm.
-- Phân biệt dòng nguồn, dòng có trạng thái, dòng chi tiết, dòng tổng/cha và dòng nghi trùng; không âm thầm khử rồi gọi là đầu việc duy nhất. Ghi rõ giả định nếu cần tổng tạm. Phải trình bày bất thường dữ liệu và mốc tổng khác hạn chi tiết. Không gộp nhãn quá hạn/chưa bắt đầu với số đếm chỉ thuộc một nhóm.
-- Khoản kinh phí bổ sung không tự có nghĩa chưa được cấp hoặc là nguyên nhân chưa hoàn thành; đề xuất xác nhận tình trạng trước khi yêu cầu cấp vốn. So sánh theo đơn vị chỉ một số mục phải ghi rõ phạm vi, không dùng tiêu đề bao quát.
-- Không bỏ các kết quả tổng hợp, vướng mắc hoặc quyết định quan trọng trong notes. Không ép báo cáo ngắn để né lỗi thực thi.
-- Nếu phiên đọc được ảnh, xem toàn bộ `_preview/sheets/` và ghi danh sách sheet đã xem trong audit. Nếu phiên không thể đọc ảnh, dùng `visual_review.method="geometry"`, kiểm tra log/geometry/kích thước đầu ra, ghi rõ bằng chứng và hạn chế vào audit rồi tiếp tục `finish`; tuyệt đối không nhận đã xem ảnh.
-
-## Tiếp tục sau khi bị ngắt
-
-Chạy `python3 "SKILL_DIR/iwork.py" resume "WORK"`. Script chỉ lô tối đa 3 phần tiếp theo chưa ghi; đọc lại notes và phần nguồn cần thiết rồi tiếp tục ngay qua mọi lô, build, audit và finish. Không extract lại, không hỏi người dùng có muốn tiếp tục khi yêu cầu ban đầu đã rõ. Trước khi gửi câu trả lời, luôn đọc `iwork-state.json`; nếu phase chưa phải `complete` và chưa có trở ngại thật sự thì phải tiếp tục dùng công cụ, không được kết thúc lượt. Nếu runtime cưỡng bức dừng trước khi thực thi tool, skill không tự khởi động lại được; ở lượt kế tiếp phải resume thay vì tạo lại từ đầu.
+- **Không bịa.** Mọi số, tên vùng/đơn vị, chủ sở hữu, nguyên nhân, mốc hạn phải có trong nguồn. Kiến nghị tự đề xuất phải ghi rõ là đề xuất. Slide có số liệu phải có `nguon`.
+- **Đúng phạm vi.** Mỗi số nêu đúng đối tượng, phạm vi, đơn vị đo; KPI của một đơn vị không trình bày như tổng chung. Chỉ cộng các đại lượng cùng phạm vi và đơn vị. Đối chiếu nhãn từng ô số với câu nguồn chứa nó (vd "VM bàn giao" khác "VM đã rà soát").
+- **Đúng mốc và trạng thái.** Mốc ngày gắn đúng công việc; tỷ lệ thấp nhất không tự chứng minh chậm kế hoạch. Trạng thái một dòng không đại diện cả mục: nêu mã dòng, đơn vị cụ thể.
+- **Giữ cách viết số của nguồn** (`9.360`, `48,5`).
+- Tác giả/đơn vị chỉ lấy từ nguồn hoặc yêu cầu rõ của người dùng; không có thì để trống.
+- Biểu đồ trong nguồn: không xem được ảnh thì không đoán số.
+- Validator có thể báo nhầm: đối chiếu nguồn trước khi sửa, không xoá nội dung đúng chỉ để qua kiểm.
 
 ## Trả kết quả
 
-Chỉ nhận hoàn thành khi build cuối cùng đạt, có cả HTML/PDF, đã xem preview và finish xác nhận audit đúng hash cuối. Trả đường dẫn, số slide, nguồn/ngày báo cáo, kết quả kiểm tra và điểm còn chưa chắc. Không khẳng định độ chính xác tuyệt đối chỉ dựa vào build.
-
-Sau khi báo cáo hoàn tất, chỉ thông báo đúng câu: **“File HTML có thể được chia sẻ bằng link thông qua iView trên Go Connect.”** Đây chỉ là thông tin về tính năng. Không hỏi người dùng có muốn tạo link, không tự bấm chia sẻ, không tự tạo link và không đưa ra link iView trong quy trình của skill này.
+Chỉ trả khi driver in `HOÀN TẤT`. Nêu: đường dẫn HTML/PDF (dạng liên kết tương đối), số slide, ngày báo cáo, các điểm trong `meta.canXacNhan` và `uncertainties` của `delivery.json`. Luôn nói thật hai hạn chế: **chưa xem ảnh slide** (bố cục chỉ kiểm bằng phép đo trình duyệt) và bảng `doi_chieu_so` trong `delivery.json` là để người duyệt kiểm nhãn từng con số. Bản `BẢN NHÁP` thì mở đầu bằng cảnh báo và liệt kê lỗi còn lại. Không khẳng định chính xác tuyệt đối chỉ vì build đạt. Cuối cùng thêm đúng câu: **"File HTML có thể được chia sẻ bằng link thông qua iView trên Go Connect."** Không tự tạo link.

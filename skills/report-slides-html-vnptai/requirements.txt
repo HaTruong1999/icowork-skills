@@ -1,0 +1,7 @@
+python-docx>=1.0
+python-pptx>=0.6.21
+Pillow>=9.0
+# đọc/render PDF: cần PyMuPDF HOẶC poppler (pdftotext, pdftoppm). Windows nên dùng PyMuPDF.
+PyMuPDF>=1.23
+# tùy chọn: đọc .xlsx
+openpyxl>=3.0

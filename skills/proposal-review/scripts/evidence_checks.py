@@ -93,7 +93,7 @@ def _distinctive(grams):
     """Chỉ giữ cụm có số hoặc từ dài (>=5 ký tự) - tránh báo nhầm cụm thông dụng."""
     return {g for g in grams if re.search(r'\d',g) or any(len(w)>=5 for w in g.split())}
 
-def dropped_claim_errors(details,dropped_issues):
+def dropped_claim_errors(details,dropped_issues,min_hits=1):
     """Scorecard/page_reviews không được nêu lại (như sự thật đã chốt) những nhận định đã bị
     phản biện là SAI ở final.json (dropped). Mâu thuẫn kiểu này là lỗi, không phải hai góc nhìn
     độc lập - xem SKILL.md mục 'Nhất quán giữa scorecard/page_reviews và final.json'."""
@@ -108,18 +108,18 @@ def dropped_claim_errors(details,dropped_issues):
     for item in details.get('scorecard',[]):
         text=item.get('rationale','')
         hit=_distinctive(_ngrams(text))&banned.keys()
-        if hit:
+        if len(hit)>=min_hits:
             src=banned[sorted(hit)[0]]
             errors.append(f"scorecard tiêu chí \"{item.get('criterion') or item.get('name','')}\": nhắc lại nội dung của nhận định đã bị phản biện là SAI (\"{src}\") - xóa khỏi lý do chấm điểm, hoặc đưa lại qua đúng quy trình verify/critique nếu tin là đúng.")
     for item in details.get('page_reviews',[]):
         text=item.get('observation','')
         hit=_distinctive(_ngrams(text))&banned.keys()
-        if hit:
+        if len(hit)>=min_hits:
             src=banned[sorted(hit)[0]]
             errors.append(f"page_reviews trang {item.get('page')}: nhắc lại nội dung của nhận định đã bị phản biện là SAI (\"{src}\") - xóa hoặc viết lại không khẳng định như sự thật đã chốt.")
     return errors
 
-def details_errors(details,source,dropped_issues=None):
+def details_errors(details,source,dropped_issues=None,min_hits=1):
     errors=[]
     for item in details.get('page_reviews',[]):
         text=item.get('observation','');p=next((p for p in source['pages'] if p['page']==item.get('page')),None)
@@ -129,5 +129,5 @@ def details_errors(details,source,dropped_issues=None):
         text=item.get('rationale','');pages=[p for p in source['pages'] if p['page'] in item.get('slides',[])]
         if pages and re.search(r'tiếng Anh|bản EN|song ngữ',text,re.I) and any(notes_only_english(p['notes']) for p in pages) and not any(notes_only_english(p['display']) for p in pages) and not re.search(r'ghi chú|notes',text,re.I):
             errors.append('scorecard: không trừ điểm hiển thị vì bản tiếng Anh chỉ nằm trong notes')
-    errors+=dropped_claim_errors(details,dropped_issues or [])
+    errors+=dropped_claim_errors(details,dropped_issues or [],min_hits)
     return errors

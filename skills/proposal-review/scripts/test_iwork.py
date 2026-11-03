@@ -222,6 +222,17 @@ class AutoQuoteRepair(unittest.TestCase):
             self.assertEqual(c['issues'][0]['quote'], 'Các VM app không cần sao lưu do chạy K8s'); self.assertEqual(c['issues'][1]['quote'], 'Nhiều hạng mục quá hạn')
             self.assertIn('VNPT AI', json.loads((d / 'quotes-original.json').read_text(encoding='utf8'))['I1'])
 
+    def test_runs_under_non_utf8_default_encoding(self):
+        """Windows mặc định cp125x (không mã hoá được nhiều chữ tiếng Việt). Giả lập bằng locale C: driver tự chạy lại ở chế độ UTF-8."""
+        import fitz, os
+        here = Path(__file__).resolve().parent
+        env = {k: v for k, v in os.environ.items() if k not in ('PYTHONUTF8', 'PYTHONIOENCODING')}; env.update(LC_ALL='C', PYTHONCOERCECLOCALE='0')
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d); src = d / 'Báo_cáo_ảnh_hưởng.pdf'; doc = fitz.open(); doc.new_page().insert_text((72, 72), 'De xuat nen tang X. Ngan sach 5 ty dong.'); doc.save(src); doc.close()
+            r = subprocess.run([sys.executable, '-X', 'utf8=0', str(here / 'iwork.py'), 'init', '--source', src.name, '--output', 'review-output'], cwd=d, capture_output=True, env=env)
+            out = r.stdout.decode('utf-8', 'replace') + r.stderr.decode('utf-8', 'replace')
+            self.assertEqual(r.returncode, 0, out); self.assertIn('WAITING_FOR_MODEL', out)
+
     def test_tool_logs_carry_no_raw_next_command(self):
         import fitz
         here = Path(__file__).resolve().parent

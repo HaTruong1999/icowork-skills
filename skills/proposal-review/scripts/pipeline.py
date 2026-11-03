@@ -7,8 +7,15 @@ import copy, datetime, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+os.environ.setdefault('PYTHONUTF8', '1'); os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+for _s in (sys.stdout, sys.stderr):
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
+try: VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
+except Exception: VN_TZ = datetime.timezone(datetime.timedelta(hours=7))   # Windows thiếu tzdata: Việt Nam không có giờ mùa hè nên UTC+7 là chính xác
+
 S = Path(__file__).resolve().parent.parent
-TODAY = datetime.datetime.now(ZoneInfo('Asia/Ho_Chi_Minh')).date().isoformat()
+TODAY = datetime.datetime.now(VN_TZ).date().isoformat()
 
 
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
@@ -43,7 +50,7 @@ def audit_output(run,src,wd,manifest):
 
 def tool(run,src,cmd):
     env={**os.environ,'IWORK_DRIVER':'1'}
-    p=subprocess.run([sys.executable,str(S/'scripts/review.py'),cmd,str(src)]+(['--today',TODAY] if cmd=='prepare' else []),capture_output=True,text=True,timeout=90,env=env)
+    p=subprocess.run([sys.executable,str(S/'scripts/review.py'),cmd,str(src)]+(['--today',TODAY] if cmd=='prepare' else []),capture_output=True,text=True, encoding='utf-8', errors='replace',timeout=90,env=env)
     # Bỏ dòng 'NEXT: ... review.py <lệnh> <đường dẫn>' của công cụ: agent hay chép lệnh đó (đường dẫn tuyệt đối, không ngoặc kép) và bị iWork hỏi quyền. Lệnh đúng luôn là next_command của driver.
     shown='\n'.join(l for l in p.stdout.splitlines() if not l.startswith('NEXT:'))
     (run/(cmd+'.log')).write_text(shown+'\n'+p.stderr)
@@ -60,7 +67,8 @@ def render(run,src,wd):
     if src.suffix=='.pdf':pdf=src
     else:
         with tempfile.TemporaryDirectory(prefix='full-form-render-') as tmp:
-            exe=shutil.which('soffice') or '/Applications/LibreOffice.app/Contents/MacOS/soffice'
+            exe=next((c for c in (shutil.which('soffice'),shutil.which('libreoffice'),'/Applications/LibreOffice.app/Contents/MacOS/soffice',r'C:\Program Files\LibreOffice\program\soffice.exe',r'C:\Program Files (x86)\LibreOffice\program\soffice.exe') if c and os.path.exists(c)),None)
+            if not exe:raise ValueError('Máy chưa có LibreOffice nên không đọc được PPTX/DOCX. Báo người dùng cài LibreOffice hoặc đính kèm bản PDF của tài liệu; không tự cài.')
             subprocess.run([exe,'-env:UserInstallation='+Path(tmp,'profile').as_uri(),'--headless','--convert-to','pdf','--outdir',tmp,str(src)],check=True,capture_output=True,timeout=120)
             shutil.copyfile(Path(tmp)/(src.stem+'.pdf'),v/'source.pdf')
         pdf=v/'source.pdf'

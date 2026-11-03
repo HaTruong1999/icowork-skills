@@ -146,13 +146,13 @@ def extract_docx(path):
 def extract_pdf(path):
     meta, pages = {}, []
     if shutil.which("pdfinfo"):
-        info = subprocess.run(["pdfinfo", path], capture_output=True, text=True).stdout
+        info = subprocess.run(["pdfinfo", path], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
         for k, key in [("Title", "title"), ("Subject", "subject"), ("Author", "creator")]:
             m = re.search(r"^%s:\s*(.+)$" % k, info, re.M)
             if m: meta[key] = m.group(1).strip()
     if shutil.which("pdftotext"):
         # không dùng -layout: chế độ thường giữ thứ tự từng khối chữ, không trộn các cột cạnh nhau
-        t = subprocess.run(["pdftotext", path, "-"], capture_output=True, text=True).stdout
+        t = subprocess.run(["pdftotext", path, "-"], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
         texts = t.split("\f")
     else:
         try:

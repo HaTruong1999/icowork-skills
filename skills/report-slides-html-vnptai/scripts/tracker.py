@@ -67,7 +67,7 @@ def row_rules(path, page_no, page_w):
     return out
 
 def pdf_rows(path):
-    x = subprocess.run(["pdftotext", "-bbox", path, "-"], capture_output=True, text=True).stdout
+    x = subprocess.run(["pdftotext", "-bbox", path, "-"], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
     pages = re.findall(r"<page[^>]*>(.*?)</page>", x, re.S)
     page_w = [float(w) for w in re.findall(r'<page width="([\d.]+)"', x)]
     W = []

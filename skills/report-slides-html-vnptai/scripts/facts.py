@@ -75,7 +75,7 @@ def main():
     for f in files:
         if f.lower().endswith((".pdf", ".xlsx", ".csv", ".docx")):
             tw = os.path.join(work, "tracker", re.sub(r"[^0-9A-Za-z_.-]+", "_", os.path.basename(f))[:40])
-            r = subprocess.run([sys.executable, os.path.join(HERE, "tracker.py"), f, tw, "--date", today_s], capture_output=True, text=True)
+            r = subprocess.run([sys.executable, os.path.join(HERE, "tracker.py"), f, tw, "--date", today_s], capture_output=True, text=True, encoding='utf-8', errors='replace')
             if r.returncode != 0 and "KHÔNG PHẢI BẢNG THEO DÕI" not in (r.stdout + r.stderr):
                 raise SystemExit(f"LỖI đọc bảng {os.path.basename(f)}: {r.stderr or r.stdout}")
             if r.returncode == 0 and os.path.exists(os.path.join(tw, "facts.md")):

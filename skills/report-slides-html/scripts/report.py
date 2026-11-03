@@ -123,7 +123,7 @@ def cmd_extract(a):
     import datetime as _dt
     rep_date = a.date or _dt.date.today().strftime("%d/%m/%Y")
     r = subprocess.run([sys.executable, str(SKILL / "scripts" / "facts.py"), str(work), rep_date] + [str(Path(f).expanduser().resolve()) for f in a.files],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')
     out("  " + (r.stdout.strip() or r.stderr.strip()[-300:]) + f"  -> {work / 'facts.md'}")
     if r.returncode:
         raise SystemExit("LỖI: không tạo được facts đầy đủ; sửa môi trường rồi extract lại. " + r.stderr[-1500:])

@@ -12,6 +12,17 @@ import subprocess
 import sys
 from zoneinfo import ZoneInfo
 
+import locale as _loc
+if sys.flags.utf8_mode == 0 and _loc.getpreferredencoding(False).lower().replace('-', '') != 'utf8':
+    # Windows mặc định cp125x: mọi read_text()/open()/print() tiếng Việt không chỉ bảng mã đều có thể lỗi. Chạy lại chính driver ở chế độ UTF-8 một lần.
+    raise SystemExit(subprocess.run([sys.executable, '-X', 'utf8', *sys.argv]).returncode)
+os.environ.setdefault('PYTHONUTF8', '1'); os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+for _s in (sys.stdout, sys.stderr):
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
+try: VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
+except Exception: VN_TZ = datetime.timezone(datetime.timedelta(hours=7))   # Windows thiếu tzdata: Việt Nam không có giờ mùa hè nên UTC+7 là chính xác
+
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT/'scripts'))
 from source_audit import check_audit, task as quality_task, sha, identity_errors, auto_audit, number_evidence, foreign_identity
@@ -159,7 +170,7 @@ def ship_draft(work):
     return True
 
 def run(*args):
-    result = subprocess.run([sys.executable, str(ENGINE), *map(str, args)], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, str(ENGINE), *map(str, args)], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if result.stdout: print('\n'.join(line for line in result.stdout.splitlines() if not line.startswith('NEXT:')), end='\n')
     if result.stderr: print(result.stderr, end='', file=sys.stderr)
     if result.returncode: raise SystemExit(result.returncode)
@@ -343,6 +354,20 @@ def normalize_shapes(slide):
         extra = [k for k in ('so', 'soNhan') if k in slide['giaiPhap']]
         for k in extra: del slide['giaiPhap'][k]     # mẫu chỉ có số ở vế vấn đề; khung vẽ số ở vế giải pháp chữ xanh trên nền xanh (gần như vô hình)
         if extra: fixes.append('giaiPhap: bỏ so/soNhan (mẫu không có, hiện mờ không đọc được)')
+    if slide.get('mau') == 'van-de':
+        # Thật (Hải Phòng, Windows, 03/11): model viết y là object {t, y_con}; mẫu chỉ vẽ chuỗi nên cả khung chỉ còn dấu ⋮ (7/15 slide trống, build vẫn đạt).
+        for side in ('vanDe', 'giaiPhap'):
+            node = slide.get(side)
+            if not (isinstance(node, dict) and isinstance(node.get('y'), list) and any(isinstance(x, dict) for x in node['y'])): continue
+            flat = []
+            for x in node['y']:
+                if isinstance(x, dict):
+                    head = re.sub(r'\s+', ' ', str(x.get('t') or '')).strip()
+                    kids = [re.sub(r'\s+', ' ', str(k)).strip() for k in (x.get('y_con') or x.get('y') or []) if str(k).strip()]
+                    full = f'{head}: ' + '; '.join(kids) if head and kids else head or '; '.join(kids)
+                    x = full if len(full) <= 64 else (head or full)       # mẫu chỉ có một cấp ý, tối đa 64 ký tự
+                flat.append(x)
+            node['y'] = flat; fixes.append(f'{side}.y: mỗi ý phải là chuỗi (đã đổi từ object {{t, y_con}})')
     single = {('muc-luc', 'muc'): 't', ('the', 'the'): 't', ('lo-trinh', 'buoc'): 't', ('lop', 'lop'): 't', ('anh', 'chuGiai'): 't', ('cam-on', 'lienHe'): 'gt'}
     for (mau, field), key in single.items():
         if slide.get('mau') == mau and isinstance(slide.get(field), list) and any(isinstance(x, str) for x in slide[field]):
@@ -965,9 +990,9 @@ def start(a):
     if not date:
         head = (work / 'content.md').read_text(encoding='utf-8')[:1600]
         match = re.search(r'(?<!\d)(\d{1,2}/\d{1,2}/20\d{2})(?!\d)', head)
-        date = match.group(1) if match else datetime.datetime.now(ZoneInfo('Asia/Ho_Chi_Minh')).strftime('%d/%m/%Y')
+        date = match.group(1) if match else datetime.datetime.now(VN_TZ).strftime('%d/%m/%Y')
     # Recompute facts against source report date when available.
-    result = subprocess.run([sys.executable, str(ROOT/'scripts/facts.py'), str(work), date, *files], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, str(ROOT/'scripts/facts.py'), str(work), date, *files], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if result.returncode: raise SystemExit(result.stderr or result.stdout)
     state = {'files': files, 'date': date, 'source_hashes':{f:sha(f) for f in files}, 'author_override':getattr(a,'author',None),
              'giao_dien': a.giao_dien, 'song_ngu': bool(a.song_ngu)}
@@ -1128,7 +1153,7 @@ def build(a):
         if not Path(src_path).is_file() or sha(src_path) != src_digest: raise SystemExit('Nguồn đã thay đổi; tạo lượt mới, không dùng facts cũ.')
     state['phase']='building';write_json(work/'iwork-state.json',state)
     write_json(work / 'report.json', rep)
-    result = subprocess.run([sys.executable, str(ENGINE), 'build', str(work)], capture_output=True, text=True,
+    result = subprocess.run([sys.executable, str(ENGINE), 'build', str(work)], capture_output=True, text=True, encoding='utf-8', errors='replace',
                             env={**os.environ, 'REPORT_WORKFLOW_DRIVER': '1', 'REPORT_SONG_NGU': '1' if state.get('song_ngu') else '0'})
     raw_log = result.stdout + result.stderr
     # Keep engine evidence, but route the native agent back to parts/plan only.

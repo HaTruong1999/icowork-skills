@@ -475,6 +475,18 @@ class AutoFix(unittest.TestCase):
         found = [int(n) for n in re.findall(r'<section[^>]*id="slide-(\d+)"(?:(?!</section>).)*?<div class="khung"></div>', dom, re.S)]
         self.assertEqual(found, [8, 9])
 
+    def test_van_de_object_items_become_strings(self):
+        """Thật (Hải Phòng, Windows, 03/11): y là object {t, y_con}, mẫu van-de chỉ vẽ chuỗi nên 7/15 slide chỉ còn khung trống với dấu ⋮."""
+        m = self.drv()
+        s = {'mau': 'van-de', 'vanDe': {'t': 'A', 'y': [{'t': 'Lớp 1: Hạ tầng', 'y_con': ['Trung tâm dữ liệu', 'HPC']}, {'t': 'Lớp 2: ' + 'dài ' * 20, 'y_con': ['x']}, 'đã là chuỗi']},
+             'giaiPhap': {'t': 'B', 'y': [{'t': 'Giai đoạn 1', 'y_con': []}]}}
+        fixes = m.normalize_shapes(s)
+        self.assertEqual(s['vanDe']['y'][0], 'Lớp 1: Hạ tầng: Trung tâm dữ liệu; HPC')
+        self.assertTrue(s['vanDe']['y'][1].startswith('Lớp 2:') and len(s['vanDe']['y'][1]) <= 64 + 40)
+        self.assertEqual(s['vanDe']['y'][2], 'đã là chuỗi'); self.assertEqual(s['giaiPhap']['y'], ['Giai đoạn 1'])
+        self.assertEqual(len(fixes), 2)
+        self.assertEqual(m.normalize_shapes(s), [])
+
     def test_object_outline_is_normalized_to_titles(self):
         m = self.drv()
         work = self.make([{'mau': 'bia', 'tieuDe': 'x'}])

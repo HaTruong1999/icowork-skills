@@ -3,6 +3,16 @@
 import argparse, datetime, hashlib, importlib.util, json, os, re, shutil, subprocess, sys, unicodedata
 from pathlib import Path
 from zoneinfo import ZoneInfo
+import locale as _loc
+if sys.flags.utf8_mode == 0 and _loc.getpreferredencoding(False).lower().replace('-', '') != 'utf8':
+    # Windows mặc định cp125x: mọi read_text()/open()/print() tiếng Việt không chỉ bảng mã đều có thể lỗi. Chạy lại chính driver ở chế độ UTF-8 một lần.
+    raise SystemExit(subprocess.run([sys.executable, '-X', 'utf8', *sys.argv]).returncode)
+os.environ.setdefault('PYTHONUTF8', '1'); os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+for _s in (sys.stdout, sys.stderr):
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
+try: VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
+except Exception: VN_TZ = datetime.timezone(datetime.timedelta(hours=7))   # Windows thiếu tzdata: Việt Nam không có giờ mùa hè nên UTC+7 là chính xác
 S=Path(__file__).resolve().parent.parent
 for directory in ('/opt/homebrew/bin', '/usr/local/bin'):
     if Path(directory).is_dir() and directory not in os.environ.get('PATH', '').split(os.pathsep):
@@ -54,7 +64,7 @@ def bootstrap():
         raise SystemExit('LỖI: thiếu thư viện beautifulsoup4 hoặc PyMuPDF và không cài được. Báo người dùng; không tự cài và không gõ đường dẫn Python nào.')
     env = Path.home() / '.cache' / 'proposal-review' / 'python'
     py = env / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
-    quiet = dict(capture_output=True, text=True)
+    quiet = dict(capture_output=True, text=True, encoding='utf-8', errors='replace')
     def has_deps():
         return py.exists() and subprocess.run([str(py), '-c', 'import bs4, fitz'], **quiet).returncode == 0
     if not has_deps():
@@ -124,7 +134,7 @@ def load_model_json(path):
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__);sp=ap.add_subparsers(dest='cmd',required=True)
-    p=sp.add_parser('init');p.add_argument('--source',required=True);p.add_argument('--output',required=True);p.add_argument('--today',default=datetime.datetime.now(ZoneInfo('Asia/Ho_Chi_Minh')).date().isoformat());p.add_argument('--model',default='model mặc định của iWork',help='Chỉ để ghi vào phiếu; driver không gọi model')
+    p=sp.add_parser('init');p.add_argument('--source',required=True);p.add_argument('--output',required=True);p.add_argument('--today',default=datetime.datetime.now(VN_TZ).date().isoformat());p.add_argument('--model',default='model mặc định của iWork',help='Chỉ để ghi vào phiếu; driver không gọi model')
     p=sp.add_parser('next');p.add_argument('--work',required=True)
     p=sp.add_parser('doctor');p.add_argument('--work',required=True)
     p=sp.add_parser('resume');p.add_argument('--work',required=True)
@@ -134,7 +144,7 @@ def main():
         if not source.is_file() or source.suffix.lower() not in ['.pptx','.docx','.pdf']:raise ValueError('--source must be a PPTX/DOCX/PDF file, never an _review folder')
         w=Path(a.output).resolve()
         if not w.is_relative_to(Path.cwd().resolve()):raise ValueError(f'Output must be inside the current iWork workspace {Path.cwd()}. Use a new relative output folder, not the input folder.')
-        real_today=datetime.datetime.now(ZoneInfo('Asia/Ho_Chi_Minh')).date().isoformat()
+        real_today=datetime.datetime.now(VN_TZ).date().isoformat()
         if a.today!=real_today:
             print(f'LƯU Ý: bỏ --today {a.today}; dùng ngày hệ thống {real_today} (model hay tự ghi sai năm, làm sai mọi kết luận quá hạn/chưa tới hạn).')
             a.today=real_today

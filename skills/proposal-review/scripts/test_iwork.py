@@ -193,4 +193,43 @@ class ShortcutLauncher(unittest.TestCase):
                 r = subprocess.run([sys.executable, str(here / 'next.py')], cwd=empty, capture_output=True, text=True)
             self.assertNotEqual(r.returncode, 0); self.assertIn('Chưa có phiên review', r.stdout + r.stderr)
 
+class AutoQuoteRepair(unittest.TestCase):
+    """Thật (War room, 03/11): 8/8 trích dẫn bị REJECT vì model ghép nhiều ô bảng bằng '|'; bước nhờ model sửa bị nghĩ quá dài rồi cắt, phiên dừng.
+    Driver tự cắt về phần nguyên văn có thật."""
+    def load(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('iw_quote', Path(__file__).with_name('iwork.py')); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); return m
+    CONTENT = '10.c / VNPT AI / Các VM app không cần sao lưu do chạy K8s / 11.c / Đang thực hiện'
+    def test_keeps_only_the_verbatim_part(self):
+        m = self.load()
+        core = m.verbatim_core(None, '10.c VNPT AI: Các VM app không cần sao lưu do chạy K8s | 11.c: bịa thêm một vế không có trong tài liệu', self.CONTENT)
+        self.assertEqual(core, 'Các VM app không cần sao lưu do chạy K8s')
+    def test_invented_quote_has_no_core(self):
+        m = self.load()
+        self.assertEqual(m.verbatim_core(None, 'Doanh thu năm nay tăng gấp ba lần so với năm trước nhờ dự án mới', self.CONTENT), '')
+    def test_short_fragment_is_not_enough(self):
+        m = self.load()
+        self.assertEqual(m.verbatim_core(None, 'Đang thực hiện hoàn toàn khác một vế dài khác hẳn', self.CONTENT), '')
+    def test_shrink_quotes_rewrites_candidates_and_keeps_original(self):
+        m = self.load()
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d); (d / 'content.md').write_text(self.CONTENT, encoding='utf8')
+            (d / 'candidates.json').write_text(json.dumps({'issues': [{'quote': '10.c VNPT AI: Các VM app không cần sao lưu do chạy K8s | thêm'}, {'quote': 'Nhiều hạng mục quá hạn'}]}), encoding='utf8')
+            v = {'issues': [{'id': 'I1'}, {'id': 'I2'}]}
+            bad = [{'id': 'I1', 'reason': 'không tìm thấy nguyên văn "x"'}, {'id': 'I2', 'reason': 'Nêu quá hạn nhưng mốc chưa qua'}]
+            self.assertEqual(m.shrink_quotes(None, d, v, bad), 1)
+            c = json.loads((d / 'candidates.json').read_text(encoding='utf8'))
+            self.assertEqual(c['issues'][0]['quote'], 'Các VM app không cần sao lưu do chạy K8s'); self.assertEqual(c['issues'][1]['quote'], 'Nhiều hạng mục quá hạn')
+            self.assertIn('VNPT AI', json.loads((d / 'quotes-original.json').read_text(encoding='utf8'))['I1'])
+
+    def test_tool_logs_carry_no_raw_next_command(self):
+        import fitz
+        here = Path(__file__).resolve().parent
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d); src = d / 'dx.pdf'; doc = fitz.open(); doc.new_page().insert_text((72, 72), 'De xuat nen tang X. Ngan sach 5 ty dong.'); doc.save(src); doc.close()
+            r = subprocess.run([sys.executable, str(here / 'iwork.py'), 'init', '--source', 'dx.pdf', '--output', 'review-output'], cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            log = (d / 'review-output' / 'prepare.log').read_text(encoding='utf8')
+            self.assertIn('OK:', log); self.assertNotIn('NEXT:', log); self.assertNotIn('review.py', log)
+
 if __name__=='__main__':unittest.main()

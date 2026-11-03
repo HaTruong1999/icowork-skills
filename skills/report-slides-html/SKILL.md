@@ -1,6 +1,9 @@
 ---
 name: report-slides-html
-description: Tạo báo cáo điều hành dạng slide HTML 16:9 và PDF từ PDF, Excel, CSV, Word hoặc PowerPoint, dùng giao diện K7 bản chung (không logo VNPT AI, gắn được logo đơn vị) và kiểm tra chặt số liệu, tên riêng, tràn chữ. Dùng khi cần tổng hợp báo cáo cho lãnh đạo; không dùng để review tài liệu.
+description: |
+  - Tính năng chính: tổng hợp tài liệu thành báo cáo điều hành dạng slide 16:9 cho lãnh đạo, giao diện K7 bản chung (không logo VNPT AI, tự gắn logo đơn vị); số liệu, tên riêng đều đối chiếu với nguồn, tự kiểm tràn chữ và slide trắng. Không dùng để review tài liệu.
+  - Input: tệp PDF, Excel, CSV, Word hoặc PowerPoint (tùy chọn kèm logo đơn vị).
+  - Output: báo cáo slide HTML và PDF, kèm lời thoại từng slide và bảng đối chiếu số liệu với nguồn (delivery.json).
 ---
 
 # Báo cáo điều hành dạng slide (giao diện K7 chung)

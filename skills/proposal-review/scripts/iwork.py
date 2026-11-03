@@ -1,12 +1,45 @@
 #!/usr/bin/env python3
 """Driver từng bước cho phiên iWork. Nội dung do model mặc định của phiên viết; driver không gọi model hay API nào."""
-import argparse, datetime, hashlib, importlib.util, json, os, re, shutil, subprocess, sys
+import argparse, datetime, hashlib, importlib.util, json, os, re, shutil, subprocess, sys, unicodedata
 from pathlib import Path
 from zoneinfo import ZoneInfo
 S=Path(__file__).resolve().parent.parent
 for directory in ('/opt/homebrew/bin', '/usr/local/bin'):
     if Path(directory).is_dir() and directory not in os.environ.get('PATH', '').split(os.pathsep):
         os.environ['PATH'] = os.environ.get('PATH', '') + os.pathsep + directory
+
+def fold(s):
+    """Cùng cách chuẩn hoá với review.py để so khớp nguyên văn."""
+    s=re.sub(r"[\"“”‘’'`«»]","",unicodedata.normalize("NFC",s or "").lower())
+    s=s.replace("…","...").replace("–","-").replace("—","-")
+    return re.sub(r"\s+"," ",re.sub(r"\s*\|\s*"," ",s)).strip()
+
+def verbatim_core(m,quote,content,min_words=5,min_chars=25):
+    """Đoạn liền mạch dài nhất trong `quote` mà CÓ THẬT nguyên văn trong tài liệu.
+    Model hay ghép nhiều ô bảng bằng dấu | hoặc chữa lại câu nên nguyên văn bị REJECT; phần có thật của nó vẫn là bằng chứng hợp lệ,
+    nên driver tự cắt về đúng phần đó thay vì bắt model sửa (bước đó là chỗ model hay nghĩ quá dài rồi bị cắt)."""
+    folded=fold(content);best=''
+    for seg in re.split(r'…|\.\.\.|\|',quote):
+        words=seg.split()
+        for i in range(len(words)):
+            for j in range(len(words),i+min_words-1,-1):
+                run=' '.join(words[i:j])
+                if len(run)<=len(best):break
+                if len(run)>=min_chars and fold(run).strip(' .,;:-') in folded:best=run;break
+    return best
+
+def shrink_quotes(m,wd,v,bad):
+    """Thay quote của các mục REJECT vì 'không tìm thấy nguyên văn' bằng phần nguyên văn có thật. Trả về số mục đã sửa."""
+    path=wd/'candidates.json';c=json.loads(path.read_text());content=(wd/'content.md').read_text(encoding='utf8')
+    index={x['id']:i for i,x in enumerate(v['issues'])};done=0;before={}
+    for x in bad:
+        if not str(x.get('reason','')).startswith('không tìm thấy nguyên văn'):continue
+        i=index.get(x['id'])
+        if i is None or i>=len(c['issues']):continue
+        core=verbatim_core(m,c['issues'][i].get('quote') or '',content)
+        if core:before[x['id']]=c['issues'][i]['quote'];c['issues'][i]['quote']=core;done+=1
+    if done:save(wd/'quotes-original.json',before);save(path,c)
+    return done
 
 def bootstrap():
     """Thiếu thư viện (bs4, PyMuPDF) thì chạy lại chính driver bằng Python trong môi trường riêng ở ~/.cache.
@@ -143,6 +176,13 @@ def main():
             if st['repairs']['candidates_error']>2:raise
             return task(w,st,'Sửa lỗi kỹ thuật trong candidates.json',f'{wd}/candidates.json chưa qua được verify vì lỗi định dạng/schema (không phải REJECT nội dung từng mục). Lỗi thật từ công cụ: {error}\nSửa đúng lỗi này theo mẫu ở {S}/references/candidates.md rồi chạy next_command.')
         v=json.loads((wd/'verified.json').read_text());bad=[x for x in v['issues'] if x['status']=='REJECT']
+        if bad and not st['repairs'].get('auto_quotes'):
+            st['repairs']['auto_quotes']=1
+            if shrink_quotes(m,wd,v,bad):
+                try:m.tool(w,src,'verify')
+                except RuntimeError:pass
+                v=json.loads((wd/'verified.json').read_text());bad=[x for x in v['issues'] if x['status']=='REJECT']
+            if bad and len(v['issues'])-len(bad)>=3:st['repairs']['candidates']=1;save(w/'session.json',st)   # còn đủ mục đạt: bỏ mục hỏng ngay, không nhờ model sửa
         if bad and not st['repairs'].get('candidates'):
             st['repairs']['candidates']=1;save(wd/'rejected-before-repair.json',bad)
             return task(w,st,'Sửa trích dẫn một lần',f'Đọc {w}/verify.log và {wd}/content.md. Dùng công cụ edit sửa ĐÚNG trường `quote` của các mục bị REJECT trong {wd}/candidates.json bằng đoạn nguyên văn có thật trong {wd}/content.md; không viết lại cả tệp, không sửa source hay skill. Rồi chạy next_command.')

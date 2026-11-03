@@ -44,7 +44,9 @@ def audit_output(run,src,wd,manifest):
 def tool(run,src,cmd):
     env={**os.environ,'IWORK_DRIVER':'1'}
     p=subprocess.run([sys.executable,str(S/'scripts/review.py'),cmd,str(src)]+(['--today',TODAY] if cmd=='prepare' else []),capture_output=True,text=True,timeout=90,env=env)
-    (run/(cmd+'.log')).write_text(p.stdout+'\n'+p.stderr)
+    # Bỏ dòng 'NEXT: ... review.py <lệnh> <đường dẫn>' của công cụ: agent hay chép lệnh đó (đường dẫn tuyệt đối, không ngoặc kép) và bị iWork hỏi quyền. Lệnh đúng luôn là next_command của driver.
+    shown='\n'.join(l for l in p.stdout.splitlines() if not l.startswith('NEXT:'))
+    (run/(cmd+'.log')).write_text(shown+'\n'+p.stderr)
     if p.returncode:
         # Lấy trọn thông báo lỗi (dòng ValueError/LỖI cuối), không cắt cụt: agent cần thấy đủ mọi mục phải sửa.
         lines=[l for l in (p.stderr+'\n'+p.stdout).splitlines() if l.strip()]

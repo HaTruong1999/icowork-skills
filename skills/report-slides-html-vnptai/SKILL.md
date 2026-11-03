@@ -1,6 +1,9 @@
 ---
 name: report-slides-html-vnptai
-description: Tạo báo cáo điều hành dạng slide HTML 16:9 và PDF từ PDF, Excel, CSV, Word hoặc PowerPoint, dùng giao diện K7 nhận diện VNPT AI (logo VNPT AI) và kiểm tra chặt số liệu, tên riêng, tràn chữ. Dùng khi cần báo cáo cho lãnh đạo mang thương hiệu VNPT AI; không dùng để review tài liệu.
+description: |
+  - Tính năng chính: tổng hợp tài liệu thành báo cáo điều hành dạng slide 16:9 cho lãnh đạo, giao diện K7 nhận diện VNPT AI (logo VNPT AI); số liệu, tên riêng đều đối chiếu với nguồn, tự kiểm tràn chữ và slide trắng. Không dùng để review tài liệu.
+  - Input: tệp PDF, Excel, CSV, Word hoặc PowerPoint.
+  - Output: báo cáo slide HTML và PDF mang thương hiệu VNPT AI, kèm lời thoại từng slide và bảng đối chiếu số liệu với nguồn (delivery.json).
 ---
 
 # Báo cáo điều hành dạng slide (giao diện K7 VNPT AI)

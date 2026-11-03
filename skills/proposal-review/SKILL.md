@@ -1,6 +1,9 @@
 ---
 name: proposal-review
-description: Review tài liệu PPTX, DOCX hoặc PDF trình lãnh đạo, kiểm chứng từng vấn đề và cách sửa rồi xuất phiếu đánh giá HTML. Không dùng để viết mới báo cáo.
+description: |
+  - Tính năng chính: review tài liệu trình lãnh đạo, trả lời "gửi được chưa", nêu điểm mạnh và tối đa 12 vấn đề đúng và quan trọng; mỗi vấn đề có trích dẫn nguồn đã kiểm chứng, vị trí, tác động, cách sửa. Không dùng để viết mới báo cáo.
+  - Input: một tệp PPTX, DOCX hoặc PDF cần review.
+  - Output: phiếu đánh giá HTML (Danh_gia_<tên>.html) gồm kết luận, chấm 8 tiêu chí, nhận xét từng trang, danh sách hành động và câu hỏi cần làm rõ.
 ---
 
 # Review tài liệu có kiểm chứng (v6)

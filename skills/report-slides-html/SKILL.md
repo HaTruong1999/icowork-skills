@@ -20,7 +20,13 @@ python3 "SKILL_DIR/iwork.py" start "INPUT" --work "report-output"     # chỉ M�
 python3 "report-output/advance.py"                                    # mọi lệnh sau: driver in sẵn, chạy nguyên văn
 ```
 
-`SKILL_DIR` là thư mục chứa tệp này (đường dẫn tuyệt đối, trong ngoặc kép; Windows dùng `python`). Sau `start`, driver tạo `report-output/advance.py` và chỉ in lệnh dạng trên: **không bao giờ tự gõ lại đường dẫn skill** (gõ sai sẽ lỗi và bị hỏi quyền). Mọi đường dẫn khác là **tương đối**, trong ngoặc kép. CẤM:
+`SKILL_DIR` là thư mục chứa tệp này (đường dẫn tuyệt đối, trong ngoặc kép; Windows dùng `python`). Sau `start`, driver tạo `report-output/advance.py` và chỉ in lệnh dạng trên: **không bao giờ tự gõ lại đường dẫn skill** (gõ sai sẽ lỗi và bị hỏi quyền). Mọi đường dẫn khác là **tương đối**, trong ngoặc kép. **Lệnh bị từ chối hoặc báo không tìm thấy tệp:** chạy lại đúng lệnh đã in (`python3 "review-output/next.py"` / `python3 "report-output/advance.py"`). Không bao giờ kết luận "driver không có trên đĩa" hay "skill chạy trong sandbox" (sai: driver luôn có), và không tự xuất báo cáo bằng cách khác ngoài driver (kết quả đó không được kiểm).
+
+**Ghi các tệp `parts/NN.json` thẳng vào `report-output/parts/` bằng công cụ `write`.** Không ghi vào thư mục tạm của iWork rồi chép sang bằng `Copy-Item`/`cp`/`$src`/`$dst`: lệnh có biến `$` luôn bị iWork hỏi quyền.
+
+**Luôn có `python` (Windows) hoặc `python3` đứng trước đường dẫn tệp.** Không bao giờ chạy một đường dẫn `.py` đứng một mình (kiểu `"…\next.py"` hay `& "…\advance.py"`): Windows sẽ hiện hộp "Select an app to open this .py file" và lệnh không chạy.
+
+CẤM:
 
 - `cd`, `&&`, `;`, `|`, `>`, `2>/dev/null`, `$BIẾN`, `$(…)`, dấu huyền, `~`, vòng lặp, nhiều dòng.
 - `python3 -c`, heredoc, tự viết script, `ls`/`cat`/`find`/`grep` trên thư mục skill. Cần xem tệp thì dùng công cụ `read`; cần ghi tệp thì dùng `write`/`edit`, không dùng shell. Muốn kiểm JSON hay đếm ký tự: chạy `advance`, driver đã báo đúng lỗi và số ký tự cần bớt.

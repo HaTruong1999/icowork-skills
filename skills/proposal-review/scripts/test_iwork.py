@@ -64,7 +64,7 @@ class FullLoop(unittest.TestCase):
    doc.save(src);doc.close()
    code,out=self.run_cli(d,'init','--source',src,'--output','out','--today','2026-10-30')
    self.assertEqual(code,0,out);self.assertIn('=== CHƯA XONG (phase=candidates)',out)
-   self.assertRegex(out,r'python3 \\"/[^"]*/out/next\.py')   # launcher: đường dẫn tuyệt đối TRONG workspace (iWork tự duyệt, chạy từ mọi thư mục, không cần cd), không có đường dẫn skill
+   self.assertRegex(out,r'python3? \\"out/next\.py')   # lệnh tương đối, giống hệt ở mọi phiên; không có đường dẫn skill
    r=subprocess.run([sys.executable,'out/next.py'],cwd=d,capture_output=True,text=True);self.assertEqual(r.returncode,0,r.stderr);self.assertIn('=== CHƯA XONG',r.stdout)
    w=d/'out';wd=w/'_review'/'de_xuat';nxt=('next','--work','out')
    (wd/'candidates.json').write_text(json.dumps({'doc_title':'Đề xuất nền tảng X','verdict':'Cần bổ sung.','strengths':[{'text':'Nêu rõ ngân sách','slides':'1'}],
@@ -155,4 +155,42 @@ class FullLoop(unittest.TestCase):
   for f in root.rglob('*.py'):
    if f.name=='test_iwork.py':continue
    self.assertNotIn('api-genai',f.read_text(encoding='utf8'),f)
+
+class BootstrapQuiet(unittest.TestCase):
+    """Thật (Windows): pip in đường dẫn môi trường ~/.cache, model chép đường dẫn đó vào lệnh → iWork hỏi quyền."""
+    def test_missing_libraries_error_never_exposes_environment_path(self):
+        import builtins, importlib.util, io, os
+        spec = importlib.util.spec_from_file_location('iw_boot', Path(__file__).with_name('iwork.py')); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+        real = builtins.__import__
+        def fake(name, *a, **k):
+            if name in ('bs4', 'fitz'): raise ImportError(name)
+            return real(name, *a, **k)
+        old = os.environ.get('IWORK_BOOTSTRAPPED'); os.environ['IWORK_BOOTSTRAPPED'] = '1'
+        builtins.__import__ = fake
+        try:
+            with self.assertRaises(SystemExit) as ctx: m.bootstrap()
+        finally:
+            builtins.__import__ = real
+            if old is None: os.environ.pop('IWORK_BOOTSTRAPPED', None)
+            else: os.environ['IWORK_BOOTSTRAPPED'] = old
+        msg = str(ctx.exception)
+        self.assertIn('thiếu thư viện', msg); self.assertNotIn('.cache', msg); self.assertNotIn(str(Path.home()), msg)
+
+
+class ShortcutLauncher(unittest.TestCase):
+    """Thật (Windows): model gõ python "<skill>/scripts/next.py" (tệp không tồn tại) → iWork hỏi quyền. Tạo sẵn tệp đó cho chạy được."""
+    def test_skill_scripts_next_py_runs_the_session_in_current_folder(self):
+        import fitz
+        here = Path(__file__).resolve().parent
+        self.assertTrue((here / 'next.py').is_file())
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d); src = d / 'dx.pdf'; doc = fitz.open(); doc.new_page().insert_text((72, 72), 'De xuat nen tang X. Ngan sach 5 ty dong.'); doc.save(src); doc.close()
+            r = subprocess.run([sys.executable, str(here / 'iwork.py'), 'init', '--source', 'dx.pdf', '--output', 'review-output'], cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            r = subprocess.run([sys.executable, str(here / 'next.py')], cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr); self.assertIn('WAITING_FOR_MODEL', r.stdout)
+            with tempfile.TemporaryDirectory() as empty:
+                r = subprocess.run([sys.executable, str(here / 'next.py')], cwd=empty, capture_output=True, text=True)
+            self.assertNotEqual(r.returncode, 0); self.assertIn('Chưa có phiên review', r.stdout + r.stderr)
+
 if __name__=='__main__':unittest.main()

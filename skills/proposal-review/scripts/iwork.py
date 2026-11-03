@@ -9,15 +9,32 @@ for directory in ('/opt/homebrew/bin', '/usr/local/bin'):
         os.environ['PATH'] = os.environ.get('PATH', '') + os.pathsep + directory
 
 def bootstrap():
+    """Thiếu thư viện (bs4, PyMuPDF) thì chạy lại chính driver bằng Python trong môi trường riêng ở ~/.cache.
+    Mọi việc diễn ra BÊN TRONG driver và im lặng: pip không in gì, đường dẫn môi trường không bao giờ xuất hiện trong kết quả.
+    (Thật: pip in đường dẫn môi trường ra, model chép đường dẫn đó vào lệnh của nó, iWork hỏi quyền vì ngoài thư mục làm việc.)"""
     try:
         import bs4, fitz
+        return
     except ImportError:
-        env=Path.home()/'.cache'/'proposal-review'/'python'
-        py=env/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
-        if not py.exists():subprocess.run([sys.executable,'-m','venv',str(env)],check=True)
-        subprocess.run([str(py),'-m','pip','install','-r',str(S/'scripts/requirements.txt')],check=True)
-        if Path(sys.executable).absolute()==py.absolute():raise RuntimeError('Dependency installation failed')
-        os.execv(str(py),[str(py),str(Path(__file__).resolve()),*sys.argv[1:]])
+        pass
+    if os.environ.get('IWORK_BOOTSTRAPPED') == '1':
+        raise SystemExit('LỖI: thiếu thư viện beautifulsoup4 hoặc PyMuPDF và không cài được. Báo người dùng; không tự cài và không gõ đường dẫn Python nào.')
+    env = Path.home() / '.cache' / 'proposal-review' / 'python'
+    py = env / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    quiet = dict(capture_output=True, text=True)
+    def has_deps():
+        return py.exists() and subprocess.run([str(py), '-c', 'import bs4, fitz'], **quiet).returncode == 0
+    if not has_deps():
+        if not py.exists():
+            made = subprocess.run([sys.executable, '-m', 'venv', str(env)], **quiet)
+            if made.returncode: raise SystemExit('LỖI: không tạo được môi trường Python cho skill. Báo người dùng.')
+        done = subprocess.run([str(py), '-m', 'pip', 'install', '-q', '--disable-pip-version-check', '-r', str(S / 'scripts/requirements.txt')], **quiet)
+        if done.returncode or not has_deps():
+            tail = ' | '.join((done.stderr or done.stdout or '').strip().splitlines()[-2:]).replace(str(Path.home()), '~')
+            raise SystemExit('LỖI: không cài được thư viện beautifulsoup4, PyMuPDF (' + tail[:200] + '). Báo người dùng; không tự cài.')
+    # chạy lại bằng Python của môi trường, kế thừa đầu ra; không dùng os.execv vì trên Windows nó trả quyền điều khiển cho shell trước khi tiến trình con xong
+    result = subprocess.run([str(py), str(Path(__file__).resolve()), *sys.argv[1:]], env={**os.environ, 'IWORK_BOOTSTRAPPED': '1'})
+    raise SystemExit(result.returncode)
 
 def tidy_workspace(w, wd, keep_names):
     """Move pipeline scaffolding into the existing _review/<name> scratch folder, leaving only the final HTML (and session.json, needed to resume/report status) visible at the top level."""
@@ -37,7 +54,7 @@ CRITIQUE_HOWTO=('Phản biện độc lập với người viết: tự đọc t
  'Không có thì thôi: không cần ghi _meta, driver tự ghi same_context và phiếu sẽ nêu hạn chế này.')
 
 RESUME_RULE=('QUY TẮC CỨNG: chưa thấy dòng HOÀN TẤT nghĩa là CHƯA XONG. Không tự viết báo cáo/tóm tắt/tệp kết quả (chỉ driver tạo HTML và PDF), không nói "đã hoàn tất". '
-  'Nếu mất ngữ cảnh, không chắc đang ở bước nào, hoặc thấy câu "Continue if you have next steps": chạy lại đúng {nxt} để làm tiếp.')
+  'Nếu mất ngữ cảnh, không chắc đang ở bước nào, hoặc thấy câu "Continue if you have next steps": chạy lại đúng {nxt} để làm tiếp. Nếu lệnh bị từ chối hoặc báo không tìm thấy tệp: chạy lại ĐÚNG lệnh trên (chép nguyên văn), KHÔNG kết luận driver không tồn tại hoặc skill chạy trong sandbox (driver luôn có trên đĩa), KHÔNG tự xuất báo cáo bằng cách khác. Lệnh LUÔN bắt đầu bằng python/python3 rồi mới tới đường dẫn tệp; không bao giờ chạy một đường dẫn .py đứng một mình (trên Windows sẽ bật hộp "chọn ứng dụng để mở tệp .py").')
 
 def task(w,st,title,body):
     p=w/'TASK.md';p.write_text('# '+title+'\n\n'+body,encoding='utf8');save(w/'session.json',st)
@@ -46,7 +63,12 @@ def task(w,st,title,body):
     launcher=w/'next.py'   # driver tự tạo: agent chỉ gõ đường dẫn tương đối trong workspace, không phải nhớ đường dẫn skill
     text=f"import runpy, sys\n# Tệp do driver tạo: chạy lại đúng driver của skill.\nDRIVER = {str(Path(__file__).resolve())!r}\nsys.argv = [DRIVER, 'next', '--work', {str(w.resolve())!r}]\nrunpy.run_path(DRIVER, run_name='__main__')\n"
     if not launcher.is_file() or launcher.read_text(encoding='utf8')!=text:launcher.write_text(text,encoding='utf8')
-    nxt=f'python3 "{w.resolve()}/next.py"'   # đường dẫn tuyệt đối trong workspace (iWork tự duyệt): chạy đúng từ mọi thư mục, model không cần `cd` (cd với đường dẫn có dấu cách không ngoặc bị hỏi quyền)
+    exe='python' if os.name=='nt' else 'python3'   # Windows thường không có python3
+    # Lệnh TƯƠNG ĐỐI và giống hệt ở mọi phiên (cũng là chuỗi có sẵn trong SKILL.md): model không phải nhớ/chép đường dẫn dài có mã phiên.
+    # Đường dẫn tuyệt đối dài từng bị model chép sai (ghép nhầm sang thư mục skill) rồi bị iWork hỏi quyền.
+    try: rel_launcher=(w.resolve()/'next.py').relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError: rel_launcher=(w.resolve()/'next.py').as_posix()
+    nxt=f'{exe} "{rel_launcher}"'
     print(json.dumps({'state':'WAITING_FOR_MODEL','phase':st['phase'],'todo':title,'task':str(p),'next_command':nxt},ensure_ascii=False))
     stray=stray_files(w)
     if stray:print('CẢNH BÁO FILE LẠ ở thư mục kết quả: '+', '.join(stray)+'. Chỉ ghi đúng file TASK.md yêu cầu trong _review/; xoá file thừa.')

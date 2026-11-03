@@ -24,7 +24,11 @@ python3 "review-output/next.py"                                                 
 
 Đường dẫn `<S>` in ở dòng "Base directory for this skill" ngay sau nội dung skill này: chép nguyên văn, **không `ls`/`find` để tìm** (`ls` thư mục skill bị iWork hỏi quyền).
 
-CẤM: `cd`, `&&`, `;`, `|`, `>`, `2>/dev/null`, `$BIẾN`, `$(…)`, `~`, vòng lặp, nhiều dòng; `python3 -c`, heredoc, tự viết script; `ls`/`cat`/`find`/`grep` trên thư mục skill (dùng công cụ `read`); ghi tệp bằng shell (dùng `write`/`edit`); đường dẫn ngoài workspace. Kiểm JSON: chạy `next`, driver báo đúng lỗi. Không gọi `review.py`, không `init` lại khi tiếp tục, không sửa `session.json`.
+**Lệnh bị từ chối hoặc báo không tìm thấy tệp:** chạy lại đúng lệnh đã in (`python3 "review-output/next.py"` / `python3 "report-output/advance.py"`). Không bao giờ kết luận "driver không có trên đĩa" hay "skill chạy trong sandbox" (sai: driver luôn có), và không tự xuất báo cáo bằng cách khác ngoài driver (kết quả đó không được kiểm).
+
+**Luôn có `python` (Windows) hoặc `python3` đứng trước đường dẫn tệp.** Không bao giờ chạy một đường dẫn `.py` đứng một mình (kiểu `"…\next.py"` hay `& "…\advance.py"`): Windows sẽ hiện hộp "Select an app to open this .py file" và lệnh không chạy.
+
+CẤM gõ đường dẫn Python nào khác: chỉ dùng `python3` (Windows: `python`). Đường dẫn trong `~/.cache` hay `AppData` là việc nội bộ của driver, gõ vào lệnh sẽ bị iWork hỏi quyền (ngoài thư mục làm việc). CẤM: `cd`, `&&`, `;`, `|`, `>`, `2>/dev/null`, `$BIẾN`, `$(…)`, `~`, vòng lặp, nhiều dòng; `python3 -c`, heredoc, tự viết script; `ls`/`cat`/`find`/`grep` trên thư mục skill (dùng công cụ `read`); ghi tệp bằng shell (dùng `write`/`edit`); đường dẫn ngoài workspace. Kiểm JSON: chạy `next`, driver báo đúng lỗi. Không gọi `review.py`, không `init` lại khi tiếp tục, không sửa `session.json`.
 
 ## Quy tắc không được dừng
 

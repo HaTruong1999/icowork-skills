@@ -169,8 +169,10 @@ class Driver(unittest.TestCase):
 
     def test_pre_render_errors_also_count_toward_cap(self):
         """Lỗi trước render (ở đây: đơn vị bịa ở bìa) cũng tính lượt build; không có bản nào để giao thì dừng hẳn."""
-        bad_cover = dict(COVER, dong='Trung tâm Điều hành giả lập')
+        # tác giả không có trong nguồn: lỗi trước render mà driver không tự gỡ được (tên đơn vị ở bìa thì driver tự gỡ, xem test_unit_names…)
         self.start()
+        plan = json.loads((self.work / 'plan.json').read_text(encoding='utf-8')); plan['meta']['author'] = 'Phòng Điều hành giả lập'; write(self.work / 'plan.json', plan)
+        bad_cover = dict(COVER)
         for i in range(4):
             write(self.work / 'parts' / '01.json', dict(bad_cover, phu=f'Theo bảng tiến độ {i}'))
             code, out = self.run_cli('advance', 'out')
@@ -443,6 +445,28 @@ class AutoFix(unittest.TestCase):
         self.assertEqual(json.loads((work / 'parts' / '01.json').read_text(encoding='utf-8'))['the'], 'Đề xuất · 2026')
         self.assertEqual(m.cover_label({'tieuDe': 'Số liệu quý'}, ''), 'Báo cáo điều hành')
 
+    def test_unit_names_from_account_profile_are_removed_from_cover_and_thanks_slide(self):
+        """Thật (Hải Phòng, Windows): slide cảm ơn ghi "VNPT AI / Trung tâm Sản phẩm & Thí nghiệm ứng dụng" dù nguồn không có (lấy từ hồ sơ người dùng)."""
+        m = self.drv()
+        thanks = {'mau': 'cam-on', 'tieuDe': 'Trân trọng cảm ơn!', 'phu': 'VNPT', 'lienHe': [
+            {'nhan': 'VNPT AI', 'gt': 'Trung tâm Sản phẩm & Thí nghiệm ứng dụng'}, {'nhan': 'VNPT', 'gt': 'Đồng hành chuyển đổi số toàn diện'}]}
+        cover = {'mau': 'bia', 'the': 'Đề xuất · 2026', 'tieuDe': 'x', 'dong': 'Trung tâm Sản phẩm & Thí nghiệm ứng dụng', 'doiTac': 'VNPT AI'}
+        work = self.make([cover, thanks]); (work / 'content.md').write_text('Nguồn nói về chuyển đổi số Hải Phòng. VNPT đồng hành.', encoding='utf-8')
+        m.autofix_parts(work, ['a', 'b'], set(), 'bai_goc.pptx', '', False)           # giao diện chung
+        got = [json.loads((work / 'parts' / f'{i:02d}.json').read_text(encoding='utf-8')) for i in (1, 2)]
+        self.assertNotIn('dong', got[0]); self.assertNotIn('doiTac', got[0])
+        self.assertEqual(got[1]['lienHe'], [{'nhan': 'VNPT', 'gt': 'Đồng hành chuyển đổi số toàn diện'}])      # ô có "VNPT AI" và "Trung tâm…" bị gỡ, ô còn lại giữ
+        only_bad = {'mau': 'cam-on', 'tieuDe': 'x', 'lienHe': [{'nhan': 'VNPT AI', 'gt': 'Trung tâm Sản phẩm & Thí nghiệm ứng dụng'}]}
+        work2 = self.make([cover, only_bad]); (work2 / 'content.md').write_text('Nguồn nói về Hải Phòng.', encoding='utf-8')
+        m.autofix_parts(work2, ['a', 'b'], set(), 'bai_goc.pptx', '', False)
+        self.assertEqual(json.loads((work2 / 'parts' / '02.json').read_text(encoding='utf-8'))['lienHe'], [{'nhan': 'Tài liệu', 'gt': 'bai_goc.pptx'}])
+        work3 = self.make([cover, {**only_bad, 'lienHe': [{'nhan': 'VNPT AI', 'gt': 'Trung tâm Sản phẩm & Thí nghiệm ứng dụng'}]}]); (work3 / 'content.md').write_text('Nguồn nói về Hải Phòng.', encoding='utf-8')
+        m.autofix_parts(work3, ['a', 'b'], set(), 'bai_goc.pptx', '', True)              # giao diện VNPT AI: nhãn "VNPT AI" được, tên trung tâm không có trong nguồn vẫn bị gỡ
+        self.assertEqual(json.loads((work3 / 'parts' / '02.json').read_text(encoding='utf-8'))['lienHe'][0]['nhan'], 'Tài liệu')
+        work4 = self.make([cover, {**only_bad, 'lienHe': [{'nhan': 'VNPT AI', 'gt': 'Hợp tác triển khai'}]}]); (work4 / 'content.md').write_text('VNPT AI hợp tác với Qualcomm.', encoding='utf-8')
+        m.autofix_parts(work4, ['a', 'b'], set(), 'bai_goc.pptx', '', False)             # nguồn có "VNPT AI" thì giữ
+        self.assertEqual(json.loads((work4 / 'parts' / '02.json').read_text(encoding='utf-8'))['lienHe'][0]['nhan'], 'VNPT AI')
+
     def test_empty_slide_detector_names_first_blank_slide(self):
         import re
         dom = ('<section class="muc-slide" id="slide-7"><div class="khung"><p>x</p></div></section>'
@@ -644,6 +668,22 @@ class Docs(unittest.TestCase):
         self.assertIn('Giữ cách viết số của nguồn', skill)
         self.assertNotIn('API', skill.replace('không gọi API riêng', ''))
 
+
+
+class ShortcutLauncher(unittest.TestCase):
+    def test_skill_advance_py_runs_the_report_in_current_folder(self):
+        here = SKILL
+        self.assertTrue((here / 'advance.py').is_file())
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d); (d / 'report-output').mkdir()
+            (d / 'in.txt').write_text('Báo cáo thử\nDoanh thu 100 tỷ\n', encoding='utf-8')
+            r = subprocess.run([sys.executable, str(here / 'iwork.py'), 'start', 'in.txt', '--work', 'report-output'], cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            r = subprocess.run([sys.executable, str(here / 'advance.py')], cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr); self.assertIn('CHƯA XONG', r.stdout + r.stderr)
+            with tempfile.TemporaryDirectory() as empty:
+                r = subprocess.run([sys.executable, str(here / 'advance.py')], cwd=empty, capture_output=True, text=True)
+            self.assertNotEqual(r.returncode, 0); self.assertIn('Chưa có báo cáo', r.stdout + r.stderr)
 
 if __name__ == '__main__':
     unittest.main()

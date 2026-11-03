@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT/'scripts'))
-from source_audit import check_audit, task as quality_task, sha, identity_errors, auto_audit, number_evidence
+from source_audit import check_audit, task as quality_task, sha, identity_errors, auto_audit, number_evidence, foreign_identity
 from k7_build import THEMES, DEFAULT_THEME, soften
 # GUI apps on macOS often inherit a minimal PATH. Only add existing standard bins.
 for directory in ('/opt/homebrew/bin', '/usr/local/bin'):
@@ -128,7 +128,7 @@ def footer(work):
     print(RESUME_RULE.format(nxt=nxt))
 
 RESUME_RULE = ('QUY TẮC CỨNG: chưa thấy dòng HOÀN TẤT nghĩa là CHƯA XONG. Không tự viết báo cáo/tóm tắt/tệp kết quả (chỉ driver tạo HTML và PDF), không nói "đã hoàn tất". '
-               'Nếu mất ngữ cảnh, không chắc đang ở bước nào, hoặc thấy câu "Continue if you have next steps": chạy lại đúng {nxt} để làm tiếp. Không đọc mã nguồn skill (iwork.py, k7_build.py, SKILL.md…) để "tìm hiểu": lệnh đó luôn đúng.')
+               'Nếu mất ngữ cảnh, không chắc đang ở bước nào, hoặc thấy câu "Continue if you have next steps": chạy lại đúng {nxt} để làm tiếp. Nếu lệnh bị từ chối hoặc báo không tìm thấy tệp: chạy lại ĐÚNG lệnh trên (chép nguyên văn), KHÔNG kết luận driver không tồn tại hoặc skill chạy trong sandbox (driver luôn có trên đĩa), KHÔNG tự xuất báo cáo bằng cách khác. Lệnh LUÔN bắt đầu bằng python/python3 rồi mới tới đường dẫn tệp; không bao giờ chạy một đường dẫn .py đứng một mình (trên Windows sẽ bật hộp "chọn ứng dụng để mở tệp .py"). Không đọc mã nguồn skill (iwork.py, k7_build.py, SKILL.md…) để "tìm hiểu": lệnh đó luôn đúng.')
 
 def ship_draft(work):
     """Hết lượt build mà đã có HTML/PDF: vẫn giao bản mới nhất, đặt tên *_BAN_NHAP và ghi rõ lỗi còn lại,
@@ -560,6 +560,23 @@ def cover_label(doc, date=''):
     year = re.search(r'(20\d\d)', _vi(doc.get('dong')) + ' ' + _vi(doc.get('tieuDe')) + ' ' + str(date or ''))
     return kind + (' · ' + year.group(1) if year else '')
 
+def sanitize_identity(doc, content, label='', brand_ok=False):
+    """Bìa/slide cảm ơn hay bị model điền tên đơn vị lấy từ hồ sơ tài khoản (vd "VNPT AI", "Trung tâm …") mà nguồn không có.
+    Driver tự gỡ ô đó (không bắt model sửa, không để lọt tới người xem). Slide cảm ơn cần ≥1 ô liên hệ nên dùng tên tài liệu nguồn thay thế."""
+    fixes = []
+    bad = lambda text: foreign_identity(_vi(text), content, '', brand_ok)
+    if doc.get('mau') == 'bia':
+        for key in ('dong', 'doiTac', 'the'):
+            if key in doc and bad(doc[key]): fixes.append(f'bìa: bỏ "{_vi(doc[key])[:40]}" ({key}) vì nguồn không có'); del doc[key]
+    elif doc.get('mau') == 'cam-on':
+        if 'phu' in doc and bad(doc['phu']): fixes.append(f'cảm ơn: bỏ "{_vi(doc["phu"])[:40]}" (phu) vì nguồn không có'); del doc['phu']
+        items = [x for x in (doc.get('lienHe') or []) if isinstance(x, dict)]
+        kept = [x for x in items if not (bad(x.get('nhan')) or bad(x.get('gt')))]
+        if len(kept) != len(items):
+            fixes.append(f'cảm ơn: bỏ {len(items) - len(kept)} ô liên hệ có đơn vị/nhận diện không có trong nguồn')
+            doc['lienHe'] = kept or [{'nhan': 'Tài liệu', 'gt': (label or 'Báo cáo điều hành')[:44]}]
+    return fixes
+
 def merge_extra_text(slide):
     """Mẫu thẻ/bước/mục lục chỉ có t và d. Model hay thêm `nhan`/`mota`: gộp vào d khi còn chỗ để không mất chữ."""
     fixes = []
@@ -608,7 +625,8 @@ def _map_label(value, fn):
         return {k: (fn(v) if k == 'vi' and isinstance(v, str) else v) for k, v in value.items()}
     return fn(str(value or ''))
 
-def autofix_parts(work, outline, icons, source_label='', date=''):
+def autofix_parts(work, outline, icons, source_label='', date='', brand_ok=False):
+    content_text = (work / 'content.md').read_text(encoding='utf-8') if (work / 'content.md').is_file() else ''
     """Sửa tự động các lỗi cơ học mà model hay mắc (tên icon lạ, số chương/số mục lệch) để không tốn lượt build.
     Chỉ đổi trường cơ học; không đụng tới chữ, số liệu hay ý của slide. Trả về danh sách việc đã sửa."""
     fixes = []
@@ -636,6 +654,8 @@ def autofix_parts(work, outline, icons, source_label='', date=''):
                 doc['dauMuc'] = label; changed.add(path); fixes.append(f'{path.name}: thiếu dauMuc → "{label}"')
         if source_label and doc.get('mau') in ('so-lieu', 'hinh-so', 'van-de') and not _vi(doc.get('nguon')).strip():
             doc['nguon'] = ('Nguồn: ' + source_label)[:130]; changed.add(path); fixes.append(f'{path.name}: thiếu nguon → "{doc["nguon"]}"')
+        for note in sanitize_identity(doc, content_text, source_label, brand_ok):
+            fixes.append(f'{path.name}: {note}'); changed.add(path)
         if doc.get('mau') == 'bia' and not _vi(doc.get('the')).strip():
             doc['the'] = cover_label(doc, date); changed.add(path); fixes.append(f'{path.name}: bìa thiếu nhãn nhỏ → "{doc["the"]}"')
         for note in merge_extra_text(doc) + normalize_shapes(doc):
@@ -893,7 +913,7 @@ def resume(work):
         for path, title in batch:
             print(f'- {local(path)}\n  Tiêu đề dự kiến: {title}')
         print('Mỗi file là một object theo 1 trong 12 mẫu của references/huong-dan-k7.md mục 5, có "mau" và "tieuDe"; không bọc trong slides[].')
-        print('Ghi các file của lô bằng công cụ write (nhiều lệnh write trong CÙNG MỘT bước), KHÔNG dùng shell/python/heredoc để ghi tệp; muốn kiểm thì chạy advance. Chữ: ' + ('song ngữ {"vi","en"}.' if state.get('song_ngu') else 'chỉ tiếng Việt, chuỗi thường, không viết loiThoai (driver tự tổng hợp).') + ' Tên icon chỉ lấy trong danh sách mục 6 (sai tên driver tự đổi icon gần nghĩa nhất).')
+        print('Ghi các file của lô bằng công cụ write (nhiều lệnh write trong CÙNG MỘT bước), KHÔNG dùng shell/python/heredoc để ghi tệp, KHÔNG ghi vào thư mục tạm rồi sao chép sang (Copy-Item/cp: lệnh có biến $ bị iWork hỏi quyền): ghi thẳng vào report-output/parts/; muốn kiểm thì chạy advance. Chữ: ' + ('song ngữ {"vi","en"}.' if state.get('song_ngu') else 'chỉ tiếng Việt, chuỗi thường, không viết loiThoai (driver tự tổng hợp).') + ' Tên icon chỉ lấy trong danh sách mục 6 (sai tên driver tự đổi icon gần nghĩa nhất).')
         print('Đọc lại notes.md; chỉ mở lại đoạn nguồn cần cho lô này.')
         print('Ghi xong CẢ LÔ rồi chạy NGAY TRONG CÙNG LƯỢT: ' + command('resume', work))
         print('KHÔNG DỪNG ĐỂ TRẢ LỜI NGƯỜI DÙNG khi phase chưa complete.')
@@ -1042,7 +1062,7 @@ def settle_quality(work, a):
             import importlib.util as _u
             rules = json.loads((ROOT / 'k7' / state.get('giao_dien', DEFAULT_THEME) / 'khung' / 'quy-tac-mau.json').read_text(encoding='utf-8'))
             label = ', '.join(Path(f).name for f in state.get('files', []))
-            autofix_parts(work, plan['outline'], set(rules.get('icon', [])), label, state.get('date', ''))
+            autofix_parts(work, plan['outline'], set(rules.get('icon', [])), label, state.get('date', ''), state.get('giao_dien') == 'vnpt-ai')
             state['auto_cover'] = True; write_json(work / 'iwork-state.json', state)
             print('TỰ SỬA: ' + note + '. Dựng lại ngay.')
             build(a); return
@@ -1214,7 +1234,7 @@ def advance(a):
     checker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(checker)
     label = ', '.join(Path(f).name for f in state.get('files', [])) + (f' ({state["date"]})' if state.get('date') else '')
-    fixes = autofix_parts(work, outline, set(checker.ICON), label, state.get('date', ''))
+    fixes = autofix_parts(work, outline, set(checker.ICON), label, state.get('date', ''), state.get('giao_dien') == 'vnpt-ai')
     if fixes:
         print('TỰ SỬA (lỗi cơ học, không đổi nội dung):\n  · ' + '\n  · '.join(fixes[:15]) + ('\n  · …' if len(fixes) > 15 else ''))
         step['authored_sha256'] = authored_hash(work)

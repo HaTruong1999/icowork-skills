@@ -20,17 +20,34 @@ def in_source(segment,content):
     if seg in src:return True
     words=re.findall(r'\w+',seg,re.U)
     return bool(words) and sum(w in src for w in words)>=0.85*len(words) and len(words)>=3
+UNIT_START=re.compile(r'^(trung tâm|ban|khối|tập đoàn|tổng công ty|công ty|sở|bộ|phòng|viện|trường|văn phòng|đoàn|hội|chi nhánh)\s',re.I)
+BRAND_AI=re.compile(r'\bVNPT\s*AI\b',re.I)
+
+def identity_texts(slide):
+    """Các ô chữ ở bìa và slide cảm ơn có thể mang tên đơn vị/nhận diện (mọi ô, kể cả nhãn `nhan` và `doiTac`)."""
+    if slide.get('mau')=='bia':return [vi_text(slide.get(k)) for k in ('the','dong','doiTac')]
+    if slide.get('mau')=='cam-on':return [vi_text(slide.get('phu'))]+[vi_text(x.get(k)) for x in slide.get('lienHe',[]) if isinstance(x,dict) for k in ('nhan','gt')]
+    if slide.get('type')=='cover':return [slide.get('kicker','')]
+    return []
+
+def foreign_identity(text,content,override='',brand_ok=False):
+    """Trả về đoạn chữ nêu đơn vị/nhận diện KHÔNG có trong nguồn (lấy từ hồ sơ tài khoản hay trí nhớ của model), hoặc ''.
+    Giao diện chung không dùng nhận diện VNPT AI trừ khi nguồn có; giao diện VNPT AI (brand_ok) thì được."""
+    for segment in re.split(r'[·|•\n]',text):
+        segment=segment.strip()
+        if not segment or dash_norm(segment)==dash_norm(override):continue
+        if UNIT_START.match(segment) and not in_source(segment,content):return segment
+        if not brand_ok and BRAND_AI.search(segment) and not BRAND_AI.search(content):return segment
+    return ''
+
 def identity_errors(report,content,override=''):
     errors=[];author=report.get('meta',{}).get('author') or ''
+    brand_ok=report.get('theme')=='vnpt-ai'
     if author and norm(author) not in norm(content) and author!=override:errors.append('Tác giả/đơn vị không có trong nguồn; để meta.author trống, không lấy hồ sơ tài khoản.')
     for slide in report.get('slides',[]):
-        if slide.get('mau')=='bia':cover=' · '.join(vi_text(slide.get(k)) for k in ('the','dong'))
-        elif slide.get('mau')=='cam-on':cover=' · '.join([vi_text(slide.get('phu'))]+[vi_text(x.get('gt')) for x in slide.get('lienHe',[]) if isinstance(x,dict)])
-        elif slide.get('type')=='cover':cover=slide.get('kicker','')
-        else:continue
-        for segment in re.split(r'[·|•\n]',cover):
-            segment=segment.strip()
-            if re.match(r'^(trung tâm|ban|khối|tập đoàn|sở|bộ|công ty)\s',segment,re.I) and not in_source(segment,content) and dash_norm(segment)!=dash_norm(override):errors.append('Đơn vị ở kicker không có trong nguồn: '+segment)
+        for text in identity_texts(slide):
+            bad=foreign_identity(text,content,override,brand_ok)
+            if bad:errors.append('Đơn vị/nhận diện ở bìa hoặc slide cảm ơn không có trong nguồn: '+bad)
     return list(dict.fromkeys(errors))
 
 def requirements(work):
